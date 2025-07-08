@@ -1,0 +1,1 @@
+--reset --dt=bf16 --case=pattern/f32/conv_post_ops_fusion.json

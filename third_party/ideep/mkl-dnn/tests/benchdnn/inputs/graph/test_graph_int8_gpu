@@ -1,0 +1,2 @@
+--batch=pattern/harness_int8_all
+--batch=pattern/harness_int8_ci

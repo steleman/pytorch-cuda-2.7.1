@@ -1,0 +1,13 @@
+--reset
+
+--batch=test_brgemm_ci
+
+--batch=test_brgemm_f32
+
+--batch=test_brgemm_bf16
+
+--batch=test_brgemm_f16
+
+--batch=test_brgemm_f8
+
+--batch=test_brgemm_int8
