@@ -1,0 +1,117 @@
+0. These instructions are for Fedora 41 with CUDA 12.9 and Python 3.13 ONLY.
+   They may or may not work on different versions of Fedora or CUDA.
+   This has been tested and confirmed to work on Fedora 41 and CUDA 12.9.
+   Everything else is at your own risk.
+
+1. Clone this Github repository.
+
+2. Create a build directory that is parallel (at the same level) to the
+   just-cloned repo:
+
+   %> git clone https://github.com/steleman/pytorch-cuda-2.7.1.git
+   (you will now have a cloned directory named 'pytorch-cuda-2.7.1')
+
+   %> mkdir build-pytorch-cuda-2.7.1
+   %> cd build-pytorch-cuda-2.7.1
+
+3. Copy the configure, build and install scripts you are interested in:
+
+   %> cp ../pytorch-cuda-2.7.1/build_scripts/fedora-41/run-cmake-configure-sm_89.sh .
+   %> cp ../pytorch-cuda-2.7.1/build_scripts/fedora-41/install-pytorch-sm-89.sh .
+   %> cp ../pytorch-cuda-2.7.1/build_scripts/fedora-41/build-pytorch-j8.sh .
+
+   At this point you need to install some required dependencies:
+
+    - The Full CUDA 12.9
+    - nvhpc, cutensor2, nvcc, cusparse, cusparselt, cudnn, cupti.
+      See the included 'install-pytorch-cuda-dependencies.sh' script.
+    - NVTX3: https://github.com/NVIDIA/NVTX
+    - The Full GCC Compiler
+    - The Full Binutils
+    - OpenBLAS
+    - OpenMPI
+    - cpuinfo
+
+    OpenMPI needs the environment modules to be loaded to become visible
+    on Fedora:
+
+    %> module load mpi/openmpi-x86_64
+
+    Take a look inside the run-cmake-configure-*.sh and build-pytorch-j8.sh
+    scripts. It's all done in there. You do not need to load the module
+    inside your interactive shell session.
+
+    Check the Compute Capability of your GPU:
+
+    https://developer.nvidia.com/cuda-gpus
+
+    PyTorch will refuse to use CUDA at runtime if it was compiled for a Compute
+    Capability higher than what your GPU supports.
+
+4. Run the CMake Configure script:
+
+   %> run-cmake-configure-sm_89.sh
+
+5. When it's finished, you can start the build:
+
+   %> build-pytorch-j8.sh
+
+   This will build the C++ PyTorch Libraries.
+
+   If your computer / laptop can't handle 8 (gmake -j8) parallel jobs, feel
+   free to adjust the build script to something less: -j6, j4, etc.
+
+   The build process will take a while.
+
+6. When it's finished, you can install the newly built PyTorch to a DESTDIR
+   installation directory by running 'install-pytorch-sm-89.sh':
+
+   %> ./install-pytorch-sm-89.sh
+
+   The script will install PyTorch in ../install-pytorch-sm-89 (one directory
+   above the current build directory).
+
+7. This build procedure builds the C++ PyTorch infrastructure and shared
+   libraries.
+
+   What you get: the C++ PyTorch Libraries and all the header files plus
+   CMake configuration scripts to be able to develop and compile C++ PyTorch
+   software independently of Python.
+
+8. Building the Python infrastructure:
+
+   - cd to the PyTorch Github clone directory:
+
+     %> cd ../pytorch-cuda-2.7.1
+
+   - copy the 'build-python-wheel-libtorch-whl.sh' and
+      'build-python-wheel-python-only-whl.sh'
+   scripts to the top of the Github clone PyTorch source code directory:
+
+   %> cp ./build_scripts/fedora-41/build-python-wheel-libtorch-whl.sh .
+   %> cp ./build_scripts/fedora-41/build-python-wheel-python-only-whl.sh .
+
+   - choose what you want to build: the Python Only Wheel or the C++ shared
+     libraries Wheel compatible with Python, or both.
+
+   - You can build both, but make sure you build them in the following order:
+
+    1. %> ./build-python-wheel-libtorch-whl.sh
+    2. Save the 'dist' directory just created:
+       %> mv ./dist ./dist-libtorch
+
+    3. %> ./build-python-wheel-python-only-whl.sh
+       %> mv ./dist ./dist-python
+
+    4. The Wheels will be inside the directories you just renamed.
+
+    5. You can install both Wheels, provided that you install the Libtorch
+       Wheel first. The Libtorch (C++) whl installs a few Python files that
+       get overwritten by the Python whl. This is the right thing to happen.
+
+9. That's it.
+
+10. Ubuntu build instructions to follow. Maybe. I am not a fan of Ubuntu.
+    Note: These Fedora build scripts will NOT work on Ubuntu.
+
+
