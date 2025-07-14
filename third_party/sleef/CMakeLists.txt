@@ -6,12 +6,12 @@ set(SLEEF_SOVERSION ${SLEEF_VERSION_MAJOR})
 # Options
 
 option(SLEEF_BUILD_STATIC_TEST_BINS "Build statically linked test executables" OFF)
-option(SLEEF_ENABLE_LTO "Enable LTO on GCC or ThinLTO on clang" OFF)
+option(SLEEF_ENABLE_LTO "Enable LTO on GCC or ThinLTO on clang" ON)
 option(SLEEF_BUILD_LIBM "libsleef will be built." ON)
 option(SLEEF_BUILD_DFT "libsleefdft will be built." OFF)
 option(SLEEF_BUILD_QUAD "libsleefquad will be built." OFF)
 option(SLEEF_BUILD_GNUABI_LIBS "libsleefgnuabi will be built." ON)
-option(SLEEF_BUILD_SCALAR_LIB "libsleefscalar will be built." OFF)
+option(SLEEF_BUILD_SCALAR_LIB "libsleefscalar will be built." ON)
 option(SLEEF_BUILD_TESTS "Tests will be built." ON)
 option(SLEEF_BUILD_BENCH "Bench will be built." OFF)
 option(SLEEF_BUILD_INLINE_HEADERS "Build header for inlining whole SLEEF functions" OFF)
@@ -31,8 +31,8 @@ option(SLEEF_DISABLE_FFTW "Disable testing the DFT library with FFTW" OFF)
 option(SLEEF_DISABLE_MPFR "Disable testing with the MPFR library" OFF)
 option(SLEEF_DISABLE_SSL "Disable testing with the SSL library" OFF)
 
-option(SLEEF_ENABLE_CUDA "Enable CUDA" OFF)
-option(SLEEF_ENABLE_CXX "Enable C++" OFF)
+option(SLEEF_ENABLE_CUDA "Enable CUDA" ON)
+option(SLEEF_ENABLE_CXX "Enable C++" ON)
 
 option(SLEEF_BUILD_WITH_LIBM "build libsleef with libm, can turn off on Windows to solve mutiple math functions issue." ON)
 

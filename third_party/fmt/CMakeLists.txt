@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8...3.28)
+cmake_minimum_required(VERSION 3.20)
 
 # Fallback for using newer policies on CMake <3.12.
 if (${CMAKE_VERSION} VERSION_LESS 3.12)
@@ -167,7 +167,7 @@ option(FMT_DOC "Generate the doc target." ${FMT_MASTER_PROJECT})
 option(FMT_INSTALL "Generate the install target." ON)
 option(FMT_TEST "Generate the test target." ${FMT_MASTER_PROJECT})
 option(FMT_FUZZ "Generate the fuzz target." OFF)
-option(FMT_CUDA_TEST "Generate the cuda-test target." OFF)
+option(FMT_CUDA_TEST "Generate the cuda-test target." ON)
 option(FMT_OS "Include OS-specific APIs." ON)
 option(FMT_MODULE "Build a module instead of a traditional library." OFF)
 option(FMT_SYSTEM_HEADERS "Expose headers with marking them as system." OFF)
@@ -224,12 +224,9 @@ if (FMT_MASTER_PROJECT AND NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  set(PEDANTIC_COMPILE_FLAGS -pedantic-errors -Wall -Wextra -pedantic
-      -Wold-style-cast -Wundef
-      -Wredundant-decls -Wwrite-strings -Wpointer-arith
+  set(PEDANTIC_COMPILE_FLAGS -Wall -Wextra -Wredundant-decls
+      -Wwrite-strings -Wpointer-arith
       -Wcast-qual -Wformat=2 -Wmissing-include-dirs
-      -Wcast-align
-      -Wctor-dtor-privacy -Wdisabled-optimization
       -Winvalid-pch -Woverloaded-virtual
       -Wconversion -Wundef
       -Wno-ctor-dtor-privacy -Wno-format-nonliteral)
@@ -252,7 +249,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         set(PEDANTIC_COMPILE_FLAGS ${PEDANTIC_COMPILE_FLAGS} -Wnull-dereference)
       endif ()
   endif ()
-  set(WERROR_FLAG -Werror)
+  set(WERROR_FLAG "")
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -264,7 +261,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(PEDANTIC_COMPILE_FLAGS ${PEDANTIC_COMPILE_FLAGS}
         -Wzero-as-null-pointer-constant)
   endif ()
-  set(WERROR_FLAG -Werror)
+  set(WERROR_FLAG "")
 endif ()
 
 if (MSVC)

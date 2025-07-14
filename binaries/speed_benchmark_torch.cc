@@ -197,7 +197,7 @@ class vkRunner final : public Runner<T> {
           const c10::List<at::Tensor> input_as_list = input.toTensorList();
           c10::List<at::Tensor> input_vk_list;
           input_vk_list.reserve(input_as_list.size());
-          for (int i=0; i < input_as_list.size(); ++i) {
+          for (size_t i = 0; i < input_as_list.size(); ++i) {
             const at::Tensor element = input_as_list.get(i);
             input_vk_list.emplace_back(at::rand(element.sizes()).vulkan());
           }
@@ -234,7 +234,8 @@ class vkRunner final : public Runner<T> {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
     "Run speed benchmark for pytorch model.\n"
     "Example usage:\n"
@@ -243,8 +244,16 @@ int main(int argc, char** argv) {
     " --use_bundled_input=0"
     " --warmup=5"
     " --iter=20");
+
+  if (argc < 5) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cerr << "Failed to parse command line flags!" << std::endl;
+    std::cerr << "Failed to parse command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

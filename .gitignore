@@ -121,7 +121,6 @@ torch/lib/site-packages/
 torch/lib/python*
 torch/lib64
 torch/include/
-torch/share/
 torch/test/
 torch/utils/benchmark/utils/valgrind_wrapper/callgrind.h
 torch/utils/benchmark/utils/valgrind_wrapper/valgrind.h

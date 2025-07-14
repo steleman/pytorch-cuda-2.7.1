@@ -45,8 +45,7 @@ namespace {
 using namespace cute;
 
 template <typename LayoutB, typename TileShape_MNK, typename ClusterShape_MNK>
-at::Tensor async_input_mm_impl(
-    at::Tensor a,
+at::Tensor async_input_mm_impl(at::Tensor a,
     at::Tensor b,
     at::Tensor a_chunk_signals,
     int64_t a_chunk_pivot,

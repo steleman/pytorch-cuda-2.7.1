@@ -8,6 +8,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include <gloo/algorithm.h>
 #include <gloo/common/error.h>

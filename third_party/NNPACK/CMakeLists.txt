@@ -1,10 +1,13 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6.1 FATAL_ERROR)
 
 INCLUDE(GNUInstallDirs)
 INCLUDE(CheckCSourceCompiles)
 
 # ---[ Project and semantic versioning.
 PROJECT(NNPACK C CXX ASM)
+
+# Python old CMake policy
+cmake_policy(SET CMP0148 OLD)
 
 # ---[ Options.
 SET(NNPACK_BACKEND "auto" CACHE STRING "Backend for micro-kernels implementation")

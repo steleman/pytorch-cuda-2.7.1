@@ -231,6 +231,11 @@ if(CMAKE_C_COMPILER_ID MATCHES "(GNU|Clang)")
     string(CONCAT FLAGS_OTHERS "-flto=thin")
   endif(CMAKE_C_COMPILER_ID MATCHES "Clang" AND SLEEF_ENABLE_LTO)
 
+  if ("${CMAKE_LINKER_TYPE}" STREQUAL "BFD")
+    message(STATUS "Not generating PIE executables for SLEEF with ld.bfd")
+    string(REPLACE "-Wl,--pic-executable" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+  endif()
+
   # Flags for generating inline headers
   set(FLAG_PREPROCESS "-E")
   set(FLAG_PRESERVE_COMMENTS "-C")

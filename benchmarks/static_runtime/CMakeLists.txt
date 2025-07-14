@@ -1,3 +1,18 @@
+if ("${CMAKE_LINKER_TYPE}" STREQUAL "BFD")
+  string(REPLACE "--whole-archive" "--as-needed" CMAKE_EXE_LINKER_FLAGS
+         "${CMAKE_EXE_LINKER_FLAGS}")
+  string(REPLACE "--no-whole-archive" "--as-needed" CMAKE_EXE_LINKER_FLAGS
+         "${CMAKE_EXE_LINKER_FLAGS}")
+  string(REPLACE "--whole-archive" "--as-needed" CMAKE_SHARED_LINKER_FLAGS
+         "${CMAKE_SHARED_LINKER_FLAGS}")
+  string(REPLACE "--no-whole-archive" "--as-needed" CMAKE_SHARED_LINKER_FLAGS
+         "${CMAKE_SHARED_LINKER_FLAGS}")
+  string(REPLACE "--whole-archive" "--as-needed" CMAKE_MODULE_LINKER_FLAGS
+         "${CMAKE_MODULE_LINKER_FLAGS}")
+  string(REPLACE "--no-whole-archive" "--as-needed" CMAKE_MODULE_LINKER_FLAGS
+         "${CMAKE_MODULE_LINKER_FLAGS}")
+endif()
+
 list(APPEND STATIC_RUNTIME_BENCHMARK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/deep_wide_pt.cc)
 list(APPEND STATIC_RUNTIME_BENCHMARK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/deep_wide_pt_bench.cc)
 set(STATIC_RUNTIME_BENCHMARK_SRCS ${STATIC_RUNTIME_BENCHMARK_SRCS} PARENT_SCOPE)

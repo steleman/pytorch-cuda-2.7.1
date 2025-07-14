@@ -1,7 +1,9 @@
 # Check if the processor is an ARM and if Neon instruction are available on the machine where
 # the project is compiled.
 
-IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE SYSTEM_ISA)
+
+IF(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT ${SYSTEM_ISA} STREQUAL "x86_64")
    EXECUTE_PROCESS(COMMAND cat /proc/cpuinfo OUTPUT_VARIABLE CPUINFO)
 
    #neon instruction can be found on the majority part of modern ARM processor
@@ -76,7 +78,7 @@ ELSE(CMAKE_SYSTEM_NAME MATCHES "Linux")
    set(CORTEXA8_FOUND   false CACHE BOOL "OMAP3 not available on host")
    set(CORTEXA9_FOUND   false CACHE BOOL "OMAP4 not available on host")
    set(NEON_FOUND   false CACHE BOOL "NEON not available on host")
-ENDIF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+ENDIF(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT ${SYSTEM_ISA} STREQUAL "x86_64")
 
 if(NOT NEON_FOUND)
       MESSAGE(STATUS "Could not find hardware support for NEON on this machine.")

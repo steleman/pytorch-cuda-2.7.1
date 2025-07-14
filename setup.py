@@ -289,10 +289,6 @@ if BUILD_LIBTORCH_WHL:
     os.environ["BUILD_FUNCTORCH"] = "OFF"
 
 
-if BUILD_PYTHON_ONLY:
-    os.environ["BUILD_LIBTORCHLESS"] = "ON"
-    os.environ["LIBTORCH_LIB_PATH"] = f"{_get_package_path('torch')}/lib"
-
 ################################################################################
 # Parameters parsed from environment
 ################################################################################
@@ -373,7 +369,7 @@ if BUILD_LIBTORCH_WHL:
 
 
 package_type = os.getenv("PACKAGE_TYPE", "wheel")
-version = get_torch_version()
+version = os.getenv("TORCH_PACKAGE_VERSION", get_torch_version())
 report(f"Building wheel {package_name}-{version}")
 
 cmake = CMake()

@@ -128,15 +128,24 @@ endif()
 # ---[ CUDA libraries wrapper
 
 # find lbnvrtc.so
+message(STATUS "CUDA_NVRTC_LIB: ${CUDA_NVRTC_LIB}")
+message(STATUS "CUDA_nvrtc_LIBRARY: ${CUDA_nvrtc_LIBRARY}")
+
+if (NOT CUDA_NVRTC_LIB)
 set(CUDA_NVRTC_LIB "${CUDA_nvrtc_LIBRARY}" CACHE FILEPATH "")
+endif()
+
 if(CUDA_NVRTC_LIB AND NOT CUDA_NVRTC_SHORTHASH)
   find_package(Python COMPONENTS Interpreter)
   execute_process(
-    COMMAND Python::Interpreter -c
+    COMMAND /usr/bin/python3 -c
     "import hashlib;hash=hashlib.sha256();hash.update(open('${CUDA_NVRTC_LIB}','rb').read());print(hash.hexdigest()[:8])"
-    RESULT_VARIABLE _retval
+    RESULT_VARIABLE NVRTC_HASH_RETVAL
     OUTPUT_VARIABLE CUDA_NVRTC_SHORTHASH)
-  if(NOT _retval EQUAL 0)
+
+  message(STATUS "CUDA_NVRTC_SHORTHASH: ${CUDA_NVRTC_SHORTHASH}")
+
+  if(NOT NVRTC_HASH_RETVAL EQUAL 0)
     message(WARNING "Failed to compute shorthash for libnvrtc.so")
     set(CUDA_NVRTC_SHORTHASH "XXXXXXXX")
   else()
@@ -171,17 +180,25 @@ endif()
 
 # nvToolsExt
 if(USE_SYSTEM_NVTX)
-  find_path(nvtx3_dir NAMES nvtx3 PATHS ${CUDA_INCLUDE_DIRS})
+  set(NVTX3_INCLUDE_DIRS /usr/local/include)
+  find_path(NVTX_INCLUDE_DIR
+            NAMES nvtx3/nvToolsExt.h
+            HINTS
+            ${NVTX3_INCLUDE_DIRS}
+            ${CUDA_INCLUDE_DIRS})
 else()
   find_path(nvtx3_dir NAMES nvtx3 PATHS "${PROJECT_SOURCE_DIR}/third_party/NVTX/c/include" NO_DEFAULT_PATH)
 endif()
-find_package_handle_standard_args(nvtx3 DEFAULT_MSG nvtx3_dir)
-if(nvtx3_FOUND)
+
+find_package(NVTX3)
+
+if(NVTX3_FOUND)
+  message(STATUS "Found NVTX3 in ${nvtx3_dir}")
   add_library(torch::nvtx3 INTERFACE IMPORTED)
   target_include_directories(torch::nvtx3 INTERFACE "${nvtx3_dir}")
   target_compile_definitions(torch::nvtx3 INTERFACE TORCH_CUDA_USE_NVTX3)
 else()
-  message(WARNING "Cannot find NVTX3, find old NVTX instead")
+  message(WARNING "Cannot find NVTX3, using old NVTX instead")
   add_library(torch::nvtoolsext INTERFACE IMPORTED)
   set_property(TARGET torch::nvtoolsext PROPERTY INTERFACE_LINK_LIBRARIES CUDA::nvToolsExt)
 endif()
@@ -330,7 +347,11 @@ endif()
 # setting nvcc arch flags
 torch_cuda_get_nvcc_gencode_flag(NVCC_FLAGS_EXTRA)
 # CMake 3.18 adds integrated support for architecture selection, but we can't rely on it
+message(STATUS "CMAKE_CUDA_ARCHITECTURES: ${CMAKE_CUDA_ARCHITECTURES}")
+if (NOT CMAKE_CUDA_ARCHITECTURES)
 set(CMAKE_CUDA_ARCHITECTURES OFF)
+endif()
+
 list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
 message(STATUS "Added CUDA NVCC flags for: ${NVCC_FLAGS_EXTRA}")
 
@@ -377,6 +398,27 @@ list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 
 # Set expt-extended-lambda to support lambda on device
 list(APPEND CUDA_NVCC_FLAGS "--expt-extended-lambda")
+
+string(APPEND CMAKE_CUDA_FLAGS " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+string(APPEND CMAKE_CUDA_FLAGS_DEBUG " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+string(APPEND CMAKE_CUDA_FLAGS_MINSIZEREL " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+
+string(APPEND CMAKE_CUDA_FLAGS " -DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+string(APPEND CMAKE_CUDA_FLAGS_DEBUG " -DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+string(APPEND CMAKE_CUDA_FLAGS_MINSIZEREL " -DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+
+
+string(APPEND CMAKE_CUDA_FLAGS " -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+string(APPEND CMAKE_CUDA_FLAGS_DEBUG " -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+string(APPEND CMAKE_CUDA_FLAGS_MINSIZEREL " -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+
+set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}")
 
 foreach(FLAG ${CUDA_NVCC_FLAGS})
   string(FIND "${FLAG}" " " flag_space_position)

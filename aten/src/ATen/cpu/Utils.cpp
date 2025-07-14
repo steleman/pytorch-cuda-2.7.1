@@ -43,7 +43,11 @@ bool is_avx512_bf16_supported() {
 
 bool is_amx_tile_supported() {
 #if !defined(__s390x__) && !defined(__powerpc__)
+#if defined(_M_AMD64)
   return cpuinfo_initialize() && cpuinfo_has_x86_amx_tile();
+#else
+  return false;
+#endif
 #else
   return false;
 #endif
@@ -51,16 +55,19 @@ bool is_amx_tile_supported() {
 
 bool is_amx_fp16_supported() {
 #if !defined(__s390x__) && !defined(__powerpc__)
+#if defined(_M_AMD64)
   return is_amx_tile_supported() && cpuinfo_has_x86_amx_fp16();
+#else
+  return false;
+#endif
 #else
   return false;
 #endif
 }
 
 bool init_amx() {
-  if (!is_amx_tile_supported()) {
+  if (!is_amx_tile_supported())
     return false;
-  }
 
 #if defined(__linux__) && !defined(__ANDROID__) && defined(__x86_64__)
 #define XFEATURE_XTILECFG 17

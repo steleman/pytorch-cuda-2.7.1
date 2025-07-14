@@ -8,7 +8,7 @@ endif()
 
 # Debug messages - if you want to get a list of source files and examine
 # target information, enable the following by -DPRINT_CMAKE_DEBUG_INFO=ON.
-set(PRINT_CMAKE_DEBUG_INFO FALSE CACHE BOOL "print cmake debug information")
+set(PRINT_CMAKE_DEBUG_INFO TRUE CACHE BOOL "print cmake debug information")
 if(PRINT_CMAKE_DEBUG_INFO)
   include(../cmake/DebugHelper.cmake)
 endif()

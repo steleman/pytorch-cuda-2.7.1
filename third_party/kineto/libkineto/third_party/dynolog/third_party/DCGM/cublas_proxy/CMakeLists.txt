@@ -19,7 +19,6 @@ macro(define_proxy_lib CUDA_VER)
     add_library(${lib_name} SHARED)
 
     target_compile_definitions(${lib_name} PRIVATE CUDA_VERSION_USED=${CUDA_VER})
-    target_compile_options(${lib_name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
     target_link_options(${lib_name} PRIVATE -Wl,--exclude-libs,ALL)
     target_link_options(${lib_name} PRIVATE -Xlinker --version-script=${CMAKE_CURRENT_SOURCE_DIR}/../cublas_proxy.linux_def)
 

@@ -32,7 +32,8 @@ C10_DEFINE_string(
 C10_DEFINE_string(backend, "", "The backend to be optimized");
 C10_DEFINE_string(preserved_methods, "", "Methods to be preserved")
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
     "\nRun optimization pass for pytorch model. Example usage:\n"
     "./optimize_for_mobile"
@@ -42,9 +43,15 @@ int main(int argc, char** argv) {
     " [--preserved_methods=<method_names>]"
   );
 
+  if (argc < 2) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cerr << "Failed to parse command line flags!" << std::endl;
-    std::cout << c10::UsageMessage() << std::endl;
+    std::cerr << "Failed to parse command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

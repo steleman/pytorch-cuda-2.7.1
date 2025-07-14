@@ -38,15 +38,24 @@ C10_DEFINE_bool(
   true,
   "Whether to print performance stats for AI-PEP.");
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
     "Run model load time benchmark for pytorch model.\n"
     "Example usage:\n"
     "./load_benchmark_torch"
     " --model=<model_file>"
     " --iter=20");
+
+  if (argc < 3) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cerr << "Failed to parse command line flags!" << std::endl;
+    std::cerr << "Failed to parse command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

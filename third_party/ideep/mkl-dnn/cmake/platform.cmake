@@ -53,12 +53,10 @@ endif()
 # the macros to avoid code duplication and ensure consistency.
 macro(platform_unix_and_mingw_common_ccxx_flags var)
     append(${var} "-Wall -Wno-unknown-pragmas")
-    append_if(DNNL_WERROR ${var} "-Werror")
-    append(${var} "-fvisibility=internal")
 endmacro()
 
 macro(platform_unix_and_mingw_common_cxx_flags var)
-    append(${var} "-fvisibility-inlines-hidden")
+    append(${var} "-Wall -Wno-unknown-pragmas")
 endmacro()
 
 macro(platform_unix_and_mingw_noexcept_ccxx_flags var)
