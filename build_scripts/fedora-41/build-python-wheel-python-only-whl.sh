@@ -95,6 +95,9 @@ export TORCH_PACKAGE_NAME="torch-python-${pytorch_version}-${buildversion}.${fcv
 export LIBTORCH_PACKAGE_NAME="libtorch-python-${pytorch_version}-${buildversion}.${fcversion}.${arch}"
 export TORCH_PACKAGE_VERSION="${pytorch_version}.${buildversion}"
 
+echo "rm -rf ./build ./dist"
+rm -rf ./build ./dist
+
 echo "cat /dev/null > ${output_file}"
 cat /dev/null > ${output_file}
 
