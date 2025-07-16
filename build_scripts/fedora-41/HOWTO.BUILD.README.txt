@@ -23,14 +23,19 @@
    At this point you need to install some required dependencies:
 
     - The Full CUDA 12.9
-    - nvhpc, cutensor2, nvcc, cusparse, cusparselt, cudnn, cupti.
+    - nvhpc, nccl, cutensor2, nvcc, cusparse, cusparselt, cudnn, cupti.
       See the included 'install-pytorch-cuda-dependencies.sh' script.
     - NVTX3: https://github.com/NVIDIA/NVTX
     - The Full GCC Compiler
     - The Full Binutils
     - OpenBLAS
     - OpenMPI
-    - cpuinfo
+    - cpuinfo cpuinfo-devel
+    - libibverbs libibverbs-utils
+    - rdma-core-devel
+
+    You can find a RPM for NVTX3 here in the toplevel directory under rpms.
+    NVTX3 is a C++ headers-only library.
 
     OpenMPI needs the environment modules to be loaded to become visible
     on Fedora:
