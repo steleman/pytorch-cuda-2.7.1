@@ -11,7 +11,7 @@ fi
 pytorch_version="2.7.1"
 here="`pwd`"
 topdir="`dirname ${here}`"
-destdir="${topdir}/install-pytorch-sm-86"
+destdir="${topdir}/install-pytorch-sm-90"
 srcdir="${topdir}/pytorch-${pytorch_version}"
 install_output="${here}/pytorch-sm-90-install.out"
 
@@ -25,6 +25,10 @@ unset CUDA_FORCE_PTX_JIT
 
 if [ -f /usr/bin/ccache ] ; then
   ccache --clear
+fi
+
+if [ ! -d ${destdir} ] ; then
+  mkdir -p ${destdir}
 fi
 
 cat /dev/null > ${install_output}

@@ -27,6 +27,10 @@ if [ -f /usr/bin/ccache ] ; then
   ccache --clear
 fi
 
+if [ ! -d ${destdir} ] ; then
+  mkdir -p ${destdir}
+fi
+
 cat /dev/null > ${install_output}
 echo "Running: gmake DESTDIR=${DESTDIR} install >> ${install_output} 2>&1"
 gmake DESTDIR=${DESTDIR} install >> ${install_output} 2>&1
