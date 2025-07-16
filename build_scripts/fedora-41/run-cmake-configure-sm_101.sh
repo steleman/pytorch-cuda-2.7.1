@@ -99,6 +99,7 @@ cmake_flags="${cmake_flags} -DTENSORRT_LIBRARY:FILEPATH=/usr/lib64/libnvinfer.so
 cmake_flags="${cmake_flags} -DTENSORRT_INCLUDE_DIR:FILEPATH=/usr/include"
 
 # GLOO
+cmake_flags="${cmake_flags} -DNCCL_ROOT_DIR:FILEPATH=/usr"
 cmake_flags="${cmake_flags} -DUSE_TCP_OPENSSL_LINK_DEFAULT:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_TCP_OPENSSL_LOAD_DEFAULT:BOOL=OFF"
 cmake_flags="${cmake_flags} -DGLOO_USE_CUDA_TOOLKIT:BOOL=ON"
