@@ -1,24 +1,29 @@
 # Minimum CMake required
 cmake_minimum_required(VERSION 3.20)
 include(cmake/Utils.cmake)
+
 # Set default build type
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "Build type not set - defaulting to Release")
-  set(
-    CMAKE_BUILD_TYPE "Release"
-    CACHE
+  set(CMAKE_BUILD_TYPE "Release" CACHE
       STRING
       "Choose the type of build from: Debug Release RelWithDebInfo MinSizeRel Coverage."
     FORCE)
 endif()
+
 cmake_policy(SET CMP0063 NEW)
 cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0148 OLD)
 
 # Project
 project(onnx C CXX)
 option(ONNX_USE_PROTOBUF_SHARED_LIBS "Build ONNX using protobuf shared library. Sets PROTOBUF_USE_DLLS CMAKE Flag and Protobuf_USE_STATIC_LIBS. " ON)
 
-option(BUILD_ONNX_PYTHON "Build Python binaries" OFF)
+if (LINUX OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  set(BUILD_SHARED_LIBS ON)
+endif()
+
+option(BUILD_ONNX_PYTHON "Build Python binaries" ON)
 option(ONNX_GEN_PB_TYPE_STUBS "Generate protobuf python type stubs" ON)
 option(ONNX_WERROR "Build with Werror" OFF)
 option(ONNX_COVERAGE "Build with coverage instrumentation" OFF)
@@ -27,6 +32,10 @@ option(ONNX_USE_LITE_PROTO "Use lite protobuf instead of full." OFF)
 option(ONNX_DISABLE_EXCEPTIONS "Disable exception handling." OFF)
 option(ONNX_DISABLE_STATIC_REGISTRATION "Disable static registration for onnx operator schemas." OFF)
 option(ONNX_USE_UNITY_BUILD "Enable Unity (Jumbo) build for" OFF)
+option(ONNX_BUILD_SHARED_LIBS "Build ONNX shared libraries" ${BUILD_SHARED_LIBS})
+
+message(STATUS "BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
+message(STATUS "ONNX_BUILD_SHARED_LIBS: ${ONNX_BUILD_SHARED_LIBS}")
 
 if(NOT DEFINED ONNX_ML)
   if(DEFINED ENV{ONNX_ML})
@@ -126,38 +135,50 @@ if(ONNX_BUILD_TESTS)
   set(googletest_STATIC_LIBRARIES GTest::gtest)
 endif()
 
-if((ONNX_USE_LITE_PROTO AND TARGET protobuf::libprotobuf-lite) OR ((NOT ONNX_USE_LITE_PROTO) AND TARGET protobuf::libprotobuf))
+if ((ONNX_USE_LITE_PROTO AND TARGET protobuf::libprotobuf-lite))
   # Sometimes we need to use protoc compiled for host architecture while linking
   # libprotobuf against target architecture. See https://github.com/caffe2/caffe
   # 2/blob/96f35ad75480b25c1a23d6e9e97bccae9f7a7f9c/cmake/ProtoBuf.cmake#L92-L99
-  if(EXISTS "${ONNX_CUSTOM_PROTOC_EXECUTABLE}")
+  if (EXISTS "${ONNX_CUSTOM_PROTOC_EXECUTABLE}")
     message(STATUS "Using custom protoc executable")
     set(ONNX_PROTOC_EXECUTABLE ${ONNX_CUSTOM_PROTOC_EXECUTABLE})
   else()
     set(ONNX_PROTOC_EXECUTABLE $<TARGET_FILE:protobuf::protoc>)
   endif()
+  message(STATUS "ONNX_USE_LITE_PROTO: ${ONNX_USE_LITE_PROTO}")
+  message(STATUS "ONNX_PROTOC_EXECUTABLE: ${ONNX_PROTOC_EXECUTABLE}")
 else()
   # Customized version of find Protobuf. We need to avoid situations mentioned
   # in https://github.com/caffe2/caffe2/blob/b7d983f255ef5496474f1ea188edb5e0ac4
   # 42761/cmake/ProtoBuf.cmake#L82-L92 The following section is stolen from
   # cmake/ProtoBuf.cmake in Caffe2
+
+  message(STATUS "Searching for system PROTOC_EXECUTABLE.")
   find_program(Protobuf_PROTOC_EXECUTABLE
                NAMES protoc
+               HINTS /usr/bin/protoc
+               PATHS /usr/bin/protoc
                DOC "The Google Protocol Buffers Compiler")
+
+  message(STATUS "Protobuf_PROTOC_EXECUTABLE: ${Protobuf_PROTOC_EXECUTABLE}")
 
   # Only if protoc was found, seed the include directories and libraries. We
   # assume that protoc is installed at PREFIX/bin. We use get_filename_component
   # to resolve PREFIX.
-  if(Protobuf_PROTOC_EXECUTABLE)
+  if (Protobuf_PROTOC_EXECUTABLE)
     set(ONNX_PROTOC_EXECUTABLE ${Protobuf_PROTOC_EXECUTABLE})
+    message(STATUS "ONNX_PROTOC_EXECUTABLE: ${ONNX_PROTOC_EXECUTABLE}")
+
     get_filename_component(_PROTOBUF_INSTALL_PREFIX
                            ${Protobuf_PROTOC_EXECUTABLE} DIRECTORY)
     get_filename_component(_PROTOBUF_INSTALL_PREFIX
                            ${_PROTOBUF_INSTALL_PREFIX}/.. REALPATH)
     find_library(Protobuf_PROTOC_LIBRARY
                  NAMES protoc
-                 PATHS ${_PROTOBUF_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-                 NO_DEFAULT_PATH)
+                 PATHS /usr/lib64
+                 ${_PROTOBUF_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+    message(STATUS "Protobuf_PROTOC_LIBRARY: ${Protobuf_PROTOC_LIBRARY}")
+
     if(ONNX_USE_LITE_PROTO)
       find_library(Protobuf_LITE_LIBRARY
         NAMES protobuf-lite
@@ -166,22 +187,42 @@ else()
     else()
       find_library(Protobuf_LIBRARY
         NAMES protobuf
-        PATHS ${_PROTOBUF_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-        NO_DEFAULT_PATH)
+        PATHS
+        /usr/lib64
+        /usr/lib
+        ${_PROTOBUF_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+      message(STATUS "Protobuf_LIBRARY: ${Protobuf_LIBRARY}")
     endif(ONNX_USE_LITE_PROTO)
+
     find_path(Protobuf_INCLUDE_DIR google/protobuf/service.h
-              PATHS ${_PROTOBUF_INSTALL_PREFIX}/include
-              NO_DEFAULT_PATH)
+              HINTS /usr/include
+              PATHS /usr/include
+              ${_PROTOBUF_INSTALL_PREFIX}/include)
+
     find_package(Protobuf)
+
+    message(STATUS "Protobuf_FOUND: ${Protobuf_FOUND}")
+    message(STATUS "PROTOBUF_DIR: ${PROTOBUF_DIR}")
+    message(STATUS "PROTOBUF_INCLUDE_DIR: ${PROTOBUF_INCLUDE_DIR}")
+    message(STATUS "Protobuf_LIBRARY: ${Protobuf_LIBRARY}")
+    message(STATUS "Protobuf_VERSION: ${Protobuf_VERSION}")
+
     if (Protobuf_FOUND)
       set(PROTOBUF_DIR "${_PROTOBUF_INSTALL_PREFIX}")
       set(PROTOBUF_INCLUDE_DIR "${_PROTOBUF_INSTALL_PREFIX}/include")
       set(Build_Protobuf OFF)
       if ("${Protobuf_VERSION}" VERSION_GREATER_EQUAL "4.22.0")
         # There are extra dependencies for protobuf.
-        find_package(absl REQUIRED)
-        find_package(utf8_range REQUIRED)
+        if (APPLE)
+          find_package(absl REQUIRED)
+          find_package(utf8_range REQUIRED)
+        else()
+          find_package(abseil-cpp-devel REQUIRED)
+          find_package(utf8proc-devel REQUIRED)
+        endif()
+
         message(STATUS "absl_VERSION: ${absl_VERSION}")
+
         set(protobuf_ABSL_USED_TARGETS
           absl::absl_check
           absl::absl_log
@@ -225,8 +266,14 @@ else()
       set(Build_Protobuf ON)
     endif()
   else()  # Protobuf_PROTOC_EXECUTABLE not found.
+    message(STATUS "Protobuf_PROTOC_EXECUTABLE WAS NOT FOUND.")
     set(Build_Protobuf ON)
   endif()
+
+  message(STATUS "Build_Protobuf: ${Build_Protobuf}")
+  message(STATUS "BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
+  message(STATUS "ONNX_BUILD_SHARED_LIBS: ${ONNX_BUILD_SHARED_LIBS}")
+
   if (Build_Protobuf)
     # FetchContent module requires 3.11.
     cmake_minimum_required(VERSION 3.11)
@@ -294,7 +341,7 @@ function(RELATIVE_PROTOBUF_GENERATE_CPP NAME SRCS HDRS ROOT_DIR DEPEND)
   endif()
 
   # Add ONNX_API prefix to protobuf classes and methods in all cases
-  set(ONNX_DLLEXPORT_STR "dllexport_decl=ONNX_API:")
+  set(ONNX_DLLEXPORT_STR "")
 
   set(${SRCS})
   set(${HDRS})
@@ -356,13 +403,22 @@ function(RELATIVE_PROTOBUF_GENERATE_CPP NAME SRCS HDRS ROOT_DIR DEPEND)
         list(APPEND GEN_PROTO_ARGS "${ONNX_PROTOC_EXECUTABLE}")
     endif()
 
+    message(STATUS "Generating Protobuf file ${GENERATED_PROTO}")
+    message(STATUS "OUTPUT_PROTO_DIR: ${OUTPUT_PROTO_DIR}")
+    message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+    message(STATUS "GEN_PROTO_PY: ${GEN_PROTO_PY}")
+    message(STATUS "GEN_PROTO_ARGS: ${GEN_PROTO_ARGS}")
+    message(STATUS "INFILE: ${INFILE}")
+    message(STATUS "Running ${GEN_PROTO_PY} on ${INFILE}")
+
     add_custom_command(OUTPUT "${GENERATED_PROTO}"
                        COMMAND "${PYTHON_EXECUTABLE}" "${GEN_PROTO_PY}"
                                ARGS ${GEN_PROTO_ARGS}
                        DEPENDS ${INFILE}
                        COMMENT "Running gen_proto.py on ${INFILE}"
                        VERBATIM)
-    message("Generated: ${GENERATED_PROTO}")
+    message(STATUS "Generated: ${GENERATED_PROTO}")
+
     set(PROTOC_ARGS
         ${GENERATED_PROTO}
         -I
@@ -398,6 +454,9 @@ function(RELATIVE_PROTOBUF_GENERATE_CPP NAME SRCS HDRS ROOT_DIR DEPEND)
     if(NOT ONNX_PROTOC_EXECUTABLE)
       message(FATAL_ERROR "Protobuf compiler not found")
     endif()
+
+    message(STATUS "ONNX_PROTO_POST_BUILD_SCRIPT: ${ONNX_PROTO_POST_BUILD_SCRIPT}")
+
     if(ONNX_PROTO_POST_BUILD_SCRIPT)
       add_custom_command(
         OUTPUT "${OUTPUT_PB_SRC}" "${OUTPUT_PB_HEADER}"
@@ -492,11 +551,14 @@ if (MSVC)
     set(ONNX_API_DEFINE "-DONNX_API=")
   endif()
 else()
-  # On non-Windows, hide all symbols we don't need
-  set(ONNX_API_DEFINE "-DONNX_API=__attribute__\(\(__visibility__\(\"default\"\)\)\)")
-  set_target_properties(onnx_proto PROPERTIES CXX_VISIBILITY_PRESET hidden)
-  set_target_properties(onnx_proto PROPERTIES VISIBILITY_INLINES_HIDDEN 1)
+  set(ONNX_API_DEFINE "-DONNX_API=")
+  if (LINUX)
+    message(STATUS "Not setting -fvisibility-inlines-hidden on Linux.")
+  elseif (APPLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    message(STATUS "Not setting -fvisibility-inlines-hidden on MacOS.")
+  endif()
 endif()
+
 target_compile_definitions(onnx_proto PRIVATE ${ONNX_API_DEFINE})
 
 if(ONNX_USE_LITE_PROTO)
@@ -540,8 +602,6 @@ if(BUILD_ONNX_PYTHON)
 
   add_library(onnx_cpp2py_export MODULE "${ONNX_ROOT}/onnx/cpp2py_export.cc")
   set_target_properties(onnx_cpp2py_export PROPERTIES PREFIX "")
-  set_target_properties(onnx_cpp2py_export
-                        PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
   set_target_properties(onnx_cpp2py_export PROPERTIES SUFFIX ${PY_EXT_SUFFIX})
   set_target_properties(onnx_cpp2py_export
                         PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -564,7 +624,20 @@ if(BUILD_ONNX_PYTHON)
     "${pybind11_INCLUDE_DIRS}"
     "${PYTHON_INCLUDE_DIRS}")
 
-  if(APPLE)
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+    message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+    if (NOT ${CMAKE_C_FLAGS} STREQUAL "")
+      string(REPLACE "-fcolor-diagnostics" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+    endif()
+    if (NOT ${CMAKE_CXX_FLAGS} STREQUAL "")
+      string(REPLACE "-fcolor-diagnostics" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    endif()
+    string(APPEND CMAKE_C_FLAGS "-fno-color-diagnostics")
+    string(APPEND CMAKE_CXX_FLAGS "-fno-color-diagnostics")
+  endif()
+
+  if (APPLE)
     set_target_properties(onnx_cpp2py_export
                           PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
     # Only put double quotes around $<TARGET_FILE:onnx> for Mac

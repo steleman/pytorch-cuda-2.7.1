@@ -115,6 +115,7 @@ if(SLEEF_TARGET_PROCESSOR MATCHES "(x86|AMD64|amd64|^i.86$)")
 
   set(CLANG_FLAGS_ENABLE_PURECFMA_SCALAR "-mavx2;-mfma")
 elseif(SLEEF_TARGET_PROCESSOR MATCHES "aarch64|arm64")
+  message(STATUS "SLEEF Target AArch64.")
   set(SLEEF_ARCH_AARCH64 ON CACHE INTERNAL "True for Aarch64 architecture.")
   # Aarch64 requires support for advsimdfma4
   set(COMPILER_SUPPORTS_ADVSIMD 1)
@@ -223,16 +224,20 @@ if(CMAKE_C_COMPILER_ID MATCHES "(GNU|Clang)")
     if (NOT SLEEF_LLVM_AR_COMMAND)
       find_program(SLEEF_LLVM_AR_COMMAND "llvm-ar")
     endif()
+
     if (SLEEF_LLVM_AR_COMMAND)
       SET(CMAKE_AR ${SLEEF_LLVM_AR_COMMAND})
       SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> rcs <TARGET> <LINK_FLAGS> <OBJECTS>")
       SET(CMAKE_C_ARCHIVE_FINISH "true")
     endif(SLEEF_LLVM_AR_COMMAND)
-    string(CONCAT FLAGS_OTHERS "-flto=thin")
+
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      string(CONCAT FLAGS_OTHERS "-flto=thin")
+    endif()
   endif(CMAKE_C_COMPILER_ID MATCHES "Clang" AND SLEEF_ENABLE_LTO)
 
-  if ("${CMAKE_LINKER_TYPE}" STREQUAL "BFD")
-    message(STATUS "Not generating PIE executables for SLEEF with ld.bfd")
+  if ("${CMAKE_LINKER_TYPE}" STREQUAL "BFD" OR "${CMAKE_LINKER_TYPE}" STREQUAL "LLD")
+    message(STATUS "Not generating PIE executables for SLEEF with ld.bfd or ld64.lld")
     string(REPLACE "-Wl,--pic-executable" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
   endif()
 
@@ -313,6 +318,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(FLAGS_ENABLE_SVE "${FLAGS_ENABLE_SVE};-fno-tree-vrp")
 endif()
 
+if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+  if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(FLAGS_ENABLE_SVE "${FLAGS_ENABLE_SVE}")
+  endif()
+endif()
+
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "^i.86$" AND CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(SLEEF_C_FLAGS "${SLEEF_C_FLAGS} -msse2 -mfpmath=sse")
   set(DFT_C_FLAGS "${DFT_C_FLAGS} -msse2 -mfpmath=sse -m128bit-long-double")
@@ -329,6 +340,62 @@ endif()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER 9.3 AND CMAKE_C_COMPILER_VERSION VERSION_LESS 10.2)
   set(SLEEF_C_FLAGS "${SLEEF_C_FLAGS} -fno-shrink-wrap -fno-tree-vrp")
   set(DFT_C_FLAGS "${DFT_C_FLAGS} -fno-shrink-wrap -fno-tree-vrp")
+endif()
+
+string(REPLACE "-fPIC" "-fno-PIC" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+string(REPLACE "-fpic" "-fno-pic" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+string(REPLACE "-fPIE" "-fno-PIE" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+string(REPLACE "-fpie" "-fno-pie" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+
+string(REPLACE "-fPIC" "-fno-PIC" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+string(REPLACE "-fpic" "-fno-pic" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+string(REPLACE "-fPIE" "-fno-PIE" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+string(REPLACE "-fpie" "-fno-pie" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
+string(REPLACE "-fPIC" "-fno-PIC" SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+string(REPLACE "-fpic" "-fno-pic" SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+string(REPLACE "-fPIE" "-fno-PIE" SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+string(REPLACE "-fpie" "-fno-pie" SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+
+string(REPLACE "-fPIC" "-fno-PIC" DFT_C_FLAGS ${DFT_C_FLAGS})
+string(REPLACE "-fpic" "-fno-pic" DFT_C_FLAGS ${DFT_C_FLAGS})
+string(REPLACE "-fPIE" "-fno-PIE" DFT_C_FLAGS ${DFT_C_FLAGS})
+string(REPLACE "-fpie" "-fno-pie" DFT_C_FLAGS ${DFT_C_FLAGS})
+
+if (APPLE AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         DFT_C_FLAGS ${DFT_C_FLAGS})
+  string(REPLACE "-flto=thin" "" SLEEF_C_FLAGS ${SLEEF_C_FLAGS})
+  string(REPLACE "-flto=thin" "" DFT_C_FLAGS ${DFT_C_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+
+  string(REPLACE "-Wl,-search_paths_first" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+
+  message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+  message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+  message(STATUS "SLEEF_C_FLAGS: ${SLEEF_C_FLAGS}")
+  message(STATUS "DFT_C_FLAGS: ${DFT_C_FLAGS}")
+  message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+  message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+  message(STATUS "CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}")
 endif()
 
 # FEATURE DETECTION
@@ -529,7 +596,11 @@ endif()
 
 # SVE
 
-option(SLEEF_DISABLE_SVE "Disable SVE" OFF)
+if (SLEEF_ARCH_AARCH64 AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  option(SLEEF_DISABLE_SVE "Disable SVE" ON)
+else()
+  option(SLEEF_DISABLE_SVE "Disable SVE" OFF)
+endif()
 option(SLEEF_ENFORCE_SVE "Build fails if SVE is not supported by the compiler" OFF)
 
 # Darwin does not support SVE yet (see issue #474),
@@ -542,7 +613,7 @@ if(SLEEF_ARCH_AARCH64 AND NOT SLEEF_DISABLE_SVE AND NOT CMAKE_SYSTEM_NAME STREQU
     svint32_t r = svdup_n_s32(1); }"
     COMPILER_SUPPORTS_SVE)
 
-  if(COMPILER_SUPPORTS_SVE)
+  if (COMPILER_SUPPORTS_SVE)
     set(COMPILER_SUPPORTS_SVENOFMA 1)
   endif()
 endif()

@@ -546,6 +546,10 @@ if(USE_CUDA OR USE_ROCM)
   append_filelist("libtorch_cuda_core_sources" Caffe2_GPU_HIP_JIT_FUSERS_SRCS)
 endif()
 
+if (LINUX AND USE_CUDA)
+  add_compile_options("-I${CUDA_TOOLKIT_TARGET_INCLUDE}")
+endif()
+
 if(USE_CUDA)
   list(APPEND Caffe2_GPU_CU_SRCS ${Caffe2_GPU_HIP_JIT_FUSERS_SRCS})
   add_library(caffe2_nvrtc SHARED ${ATen_NVRTC_STUB_SRCS})
@@ -779,6 +783,7 @@ endif()
 
 if(NOT BUILD_LIBTORCHLESS)
 add_library(torch_cpu ${Caffe2_CPU_SRCS})
+
 if(HAVE_SOVERSION)
   set_target_properties(torch_cpu PROPERTIES
       VERSION ${TORCH_VERSION} SOVERSION ${TORCH_SOVERSION})
@@ -792,6 +797,7 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND NOT USE_IOS AND NOT USE_COREML
     target_compile_options_if_supported(torch_cuda "-Wmissing-prototypes")
     target_compile_options_if_supported(torch_cuda "-Werror=missing-prototypes")
   endif()
+
   get_target_property(TORCH_CPU_SOURCES torch_cpu SOURCES)
   foreach(generated_file IN LISTS GENERATED_CXX_TORCH)
     set_source_files_properties(${generated_file} PROPERTIES COMPILE_OPTIONS "-Wno-missing-prototypes;-Wno-error=missing-prototypes")
@@ -809,6 +815,7 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND NOT USE_IOS AND NOT USE_COREML
     endif()
   endforeach()
 endif()
+
 if(USE_MPS)
   if(CAN_COMPILE_METAL)
     add_dependencies(torch_cpu metallibs)
@@ -845,6 +852,11 @@ set_property(SOURCE ${ATen_ATTENTION_KERNEL_SRCS} APPEND
 
 if(USE_MPS OR USE_PYTORCH_METAL)
   enable_language(OBJC OBJCXX)
+  set(CMAKE_OBJC_COMPILER ${CMAKE_C_COMPILER})
+  set(CMAKE_OBJCXX_COMPILER ${CMAKE_CXX_COMPILER})
+  set(CMAKE_OBJC_FLAGS "${CMAKE_C_FLAGS} -fuse-ld=lld")
+  set(CMAKE_OBJCXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-ld=lld")
+  set(CMAKE_LINKER_TYPE LLD)
 endif()
 
 if(USE_PRECOMPILED_HEADERS)
@@ -1492,11 +1504,25 @@ endif()
 
 target_link_libraries(torch_cpu PUBLIC c10)
 target_link_libraries(torch_cpu PUBLIC ${Caffe2_PUBLIC_DEPENDENCY_LIBS})
+
+if (APPLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  find_package(OpenBLAS)
+  if (NOT BLAS_FOUND)
+    message(FATAL_ERROR "Couldn't find OpenBLAS.")
+  endif()
+
+  message(STATUS "caffe2: OpenBLAS Includes: ${OpenBLAS_INCLUDE_DIR}")
+  message(STATUS "caffe2: OpenBLAS Library: ${OpenBLAS_LIB}")
+  target_link_libraries(torch_cpu PUBLIC ${OpenBLAS_LIB})
+endif()
+
 target_link_libraries(torch_cpu PRIVATE ${Caffe2_DEPENDENCY_LIBS})
 target_link_libraries(torch_cpu PRIVATE ${Caffe2_DEPENDENCY_WHOLE_LINK_LIBS})
-if(USE_MPI)
+
+if (USE_MPI)
   target_link_libraries(torch_cpu PRIVATE MPI::MPI_CXX)
 endif()
+
 target_include_directories(torch_cpu INTERFACE $<INSTALL_INTERFACE:include>)
 target_include_directories(torch_cpu PRIVATE ${Caffe2_CPU_INCLUDE})
 target_include_directories(torch_cpu SYSTEM PRIVATE "${Caffe2_DEPENDENCY_INCLUDE}")

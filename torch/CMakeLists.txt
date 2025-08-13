@@ -1,11 +1,15 @@
 # This file used to build libtorch.so.
 # Now it only builds the Torch python bindings.
 
-if(NOT CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO)
-  cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+if (NOT CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO)
+  cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
   project(torch CXX C)
   find_package(torch REQUIRED)
-  option(USE_CUDA "Use CUDA" ON)
+  if (APPLE OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    option(USE_CUDA "Use CUDA" OFF)
+  else()
+    option(USE_CUDA "Use CUDA" ON)
+  endif()
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
@@ -231,6 +235,15 @@ add_custom_target(torch_python_stubs DEPENDS
     "${TORCH_SRC_DIR}/utils/data/datapipes/datapipe.pyi"
 )
 
+if (NOT DEFINED Python3_EXECUTABLE)
+  find_package(Python3 COMPONENTS Interpreter)
+  if (NOT Python3_FOUND)
+    set(Python3_EXECUTABLE "python3")
+  endif()
+endif()
+
+message(STATUS "Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
+
 file(GLOB_RECURSE torchgen_python "${PROJECT_SOURCE_DIR}/torchgen/*.py")
 file(GLOB_RECURSE autograd_python "${TOOLS_PATH}/autograd/*.py")
 file(GLOB_RECURSE pyi_python "${TOOLS_PATH}/pyi/*.py")
@@ -240,7 +253,7 @@ add_custom_command(
     "${TORCH_SRC_DIR}/_C/_VariableFunctions.pyi"
     "${TORCH_SRC_DIR}/nn/functional.pyi"
     COMMAND
-    "${Python_EXECUTABLE}" -mtools.pyi.gen_pyi
+    "${Python3_EXECUTABLE}" -mtools.pyi.gen_pyi
       --native-functions-path "aten/src/ATen/native/native_functions.yaml"
       --tags-path "aten/src/ATen/native/tags.yaml"
       --deprecated-functions-path "tools/autograd/deprecated.yaml"
@@ -262,7 +275,7 @@ add_custom_command(
     OUTPUT
     "${TORCH_SRC_DIR}/utils/data/datapipes/datapipe.pyi"
     COMMAND
-    "${Python_EXECUTABLE}" ${TORCH_SRC_DIR}/utils/data/datapipes/gen_pyi.py
+    "${Python3_EXECUTABLE}" ${TORCH_SRC_DIR}/utils/data/datapipes/gen_pyi.py
     DEPENDS
     "${TORCH_SRC_DIR}/utils/data/datapipes/datapipe.pyi.in"
     ${datapipe_files}
@@ -475,7 +488,7 @@ endif()
 
 add_custom_target(
   gen_torch_version ALL
-  "${Python_EXECUTABLE}" "${TOOLS_PATH}/generate_torch_version.py"
+  "${Python3_EXECUTABLE}" "${TOOLS_PATH}/generate_torch_version.py"
     --is-debug=${TORCH_VERSION_DEBUG}
     --cuda-version=${CUDA_VERSION}
     --hip-version=${HIP_VERSION}

@@ -3,12 +3,14 @@
 pytorch_version="2.7.1"
 prefix="/opt/pytorch/${pytorch_version}"
 here="`pwd`"
+arch="`uname -m`"
 topdir="`dirname ${here}`"
 srcdir="${topdir}/pytorch-${pytorch_version}"
 configure_output="${here}/pytorch-configure.out"
 libnvrtc_filepath="/usr/local/cuda-12.9/targets/x86_64-linux/lib/libnvrtc.so"
 cret=0
 distro="`cat /etc/os-release | grep "^ID=" | cut -d= -f2`"
+use_system_onnx=0
 
 bfd_linker_flags="-Wl,--no-relax -Wl,-z -Wl,noreloc-overflow"
 bfd_linker_flags="${bfd_linker_flags} -Wl,--export-dynamic"
@@ -26,14 +28,26 @@ if [ "${distro}" != "fedora" ] ; then
   exit 1
 fi
 
+cd ${srcdir}
+
+echo "Cleaning up in-tree build leftovers ..."
+find . -type d -name '__pycache__' -exec rm -rf {} \; -print > /dev/null 2>&1
+rm -rf build-libtorch-macos libtorch_python_2.7.1_700.macos_24.5.0.arm64.egg-info dist-libtorch-macos build-pytorch-macos torch_python_2.7.1_700.macos_24.5.0.arm64.egg-info dist-pytorch-macos build dist
+find . -type f -name "*.so" -exec rm -f {} \; -print > /dev/null 2>&1
+
+cd ${here}
+
 if [ -e /etc/profile.d/modules.sh ] ; then
   source /etc/profile.d/modules.sh
 fi
 
 module load mpi/openmpi-x86_64
+
 export CUDATOP="/usr/local/cuda-12.9"
 export CUDA_MAJOR=12
 export CUDA_MINOR=9
+export CUDA_TARGET_INCDIR="${CUDATOP}/targets/${arch}-linux/include"
+export CUDA_TARGET_LIBDIR="${CUDATOP}/targets/${arch}-linux/lib"
 export PATH="${CUDATOP}/bin:/usr/lib64/openmpi/bin:/usr/bin:/usr/sbin:/usr/local/bin:${PATH}"
 
 export CC="/usr/bin/gcc"
@@ -41,6 +55,9 @@ export CXX="/usr/bin/g++"
 export CFLAGS="-Wall -Wextra"
 export CXXFLAGS="-Wall -Wextra"
 export CPPFLAGS="-D_GNU_SOURCE -D_XOPEN_SOURCE=700"
+
+bfd_linker_flags="${bfd_linker_flags} -Wl,-rpath,${CUDA_TARGET_LIBDIR}"
+exe_linker_flags="${exe_linker_flags} -Wl,-rpath,${CUDA_TARGET_LIBDIR}"
 
 ${CC} --version
 ${CXX} --version
@@ -79,13 +96,14 @@ cmake_flags="${cmake_flags} -DUSE_CUDA:BOOL=ON"
 cmake_flags="${cmake_flags} -DCUDA_VERSION=12.9"
 cmake_flags="${cmake_flags} -DCUDA_MAJOR=12"
 cmake_flags="${cmake_flags} -DCUDA_MINOR=9"
+cmake_flags="${cmake_flags} -DCUDA_TOOLKIT_TARGET_INCLUDE:FILEPATH=${CUDA_TARGET_INCDIR}"
 cmake_flags="${cmake_flags} -DCUDA_ARCH_LIST:STRING=9.0"
 cmake_flags="${cmake_flags} -DTORCH_CUDA_ARCH_LIST:STRING=9.0"
 cmake_flags="${cmake_flags} -DCUDA_nvrtc_LIBRARY:FILEPATH=${libnvrtc_filepath}"
 cmake_flags="${cmake_flags} -DCUDA_NVRTC_LIB:FILEPATH=${libnvrtc_filepath}"
 cmake_flags="${cmake_flags} -DCMAKE_CUDA_ARCHITECTURES:STRING=90"
 cmake_flags="${cmake_flags} -DBLAS=OpenBLAS"
-cmake_flags="${cmake_flags} -DBUILD_LAZY_CUDA_LINALG:BOOL=OFF"
+cmake_flags="${cmake_flags} -DBUILD_LAZY_CUDA_LINALG:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_ROCM:BOOL=OFF"
 cmake_flags="${cmake_flags} -DUSE_CUDNN:BOOL=ON"
 cmake_flags="${cmake_flags} -DCUSPARSELT_LIBRARY_PATH:FILEPATH=/usr/lib64/libcusparseLt.so"
@@ -135,6 +153,11 @@ cmake_flags="${cmake_flags} -DSLEEF_ENABLE_CUDA:BOOL=ON"
 cmake_flags="${cmake_flags} -DSLEEF_ENABLE_CXX:BOOL=ON"
 # SLEEF
 
+# ONNX
+cmake_flags="${cmake_flags} -DBUILD_ONNX_PYTHON:BOOL=ON"
+# ONNX
+
+cmake_flags="${cmake_flags} -DTorch_DIR:FILEPATH=${srcdir}/torch/share/cmake/Torch"
 cmake_flags="${cmake_flags} -DUSE_LITE_PROTO:BOOL=OFF"
 cmake_flags="${cmake_flags} -DUSE_NCCL:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_SYSTEM_NCCL:BOOL=ON"
@@ -162,11 +185,81 @@ cmake_flags="${cmake_flags} -DUSE_CCACHE:BOOL=OFF"
 cmake_flags="${cmake_flags} -DBUILD_FUNCTORCH:BOOL=ON"
 cmake_flags="${cmake_flags} -DBUILD_BUNDLE_PTXAS:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_SYSTEM_LIBS:BOOL=ON"
-cmake_flags="${cmake_flags} -DUSE_SYSTEM_PTHREADPOOL:BOOL=OFF"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_SLEEF:BOOL=ON"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_EIGEN_INSTALL:BOOL=ON"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_FP16:BOOL=ON"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_PSIMD:BOOL=ON"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_FXDIV:BOOL=ON"
+cmake_flags="${cmake_flags} -DUSE_SYSTEM_PTHREADPOOL:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_SYSTEM_CPUINFO:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_SYSTEM_PYBIND11:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_SYSTEM_NVTX:BOOL=ON"
 cmake_flags="${cmake_flags} -DUSE_GOLD_LINKER:BOOL=OFF"
+
+echo "Cleaning up build artifacts leftovers ..."
+
+cd ${srcdir}
+
+for file in \
+  ./build/lib/libc10_cuda.so \
+  ./build/lib/libonnx.so \
+  ./build/lib/libtorch.so.2.7 \
+  ./build/lib/libjitbackend_test.so \
+  ./build/lib/libbackend_with_compiler.so \
+  ./build/lib/libtorch.so \
+  ./build/lib/libtorch.so.2.7.1 \
+  ./build/lib/libtorch_cuda.so \
+  ./build/lib/libc10.so \
+  ./build/lib/libtorch_global_deps.so.2.7.1 \
+  ./build/lib/libc10.so.2.7 \
+  ./build/lib/libcaffe2_nvrtc.so \
+  ./build/lib/libaoti_custom_ops.so \
+  ./build/lib/libtorch_global_deps.so \
+  ./build/lib/fbgemm_gpu_py.so \
+  ./build/lib/libc10d_cuda_test.so \
+  ./build/lib/libtorchbind_test.so \
+  ./build/lib/libtorch_cpu.so.2.7 \
+  ./build/lib/libonnx_proto.so \
+  ./build/lib/libtorch_cpu.so.2.7.1 \
+  ./build/lib/libc10.so.2.7.1 \
+  ./build/lib/libtorch_global_deps.so.2.7 \
+  ./build/lib/libtorch_cpu.so \
+  ./torch/fbgemm_gpu/fbgemm_gpu_py.so \
+  ./torch/lib/libc10_cuda.so \
+  ./torch/lib/libtorch.so.2.7 \
+  ./torch/lib/libjitbackend_test.so \
+  ./torch/lib/libbackend_with_compiler.so \
+  ./torch/lib/libtorch.so \
+  ./torch/lib/libtorch.so.2.7.1 \
+  ./torch/lib/libtorch_cuda.so \
+  ./torch/lib/libc10.so \
+  ./torch/lib/libtorch_global_deps.so.2.7.1 \
+  ./torch/lib/libc10.so.2.7 \
+  ./torch/lib/libcaffe2_nvrtc.so \
+  ./torch/lib/libaoti_custom_ops.so \
+  ./torch/lib/libtorch_global_deps.so \
+  ./torch/lib/libc10d_cuda_test.so \
+  ./torch/lib/libtorchbind_test.so \
+  ./torch/lib/libtorch_cpu.so.2.7 \
+  ./torch/lib/libtorch_cpu.so.2.7.1 \
+  ./torch/lib/libc10.so.2.7.1 \
+  ./torch/lib/libtorch_global_deps.so.2.7 \
+  ./torch/lib/libtorch_cpu.so \
+  ./torch/lib/libtorch_python.dylib \
+  ./torch/lib/libjitbackend_test.dylib \
+  ./torch/lib/libtorch_cpu.dylib \
+  ./torch/lib/libshm.dylib \
+  ./torch/lib/libaoti_custom_ops.dylib \
+  ./torch/lib/libtorch_global_deps.dylib \
+  ./torch/lib/libtorch.dylib \
+  ./torch/lib/libc10.dylib \
+  ./torch/lib/libtorchbind_test.dylib \
+  ./torch/lib/libbackend_with_compiler.dylib
+do
+  rm -f ${file}
+done
+
+cd ${here}
 
 cat /dev/null > ${configure_output}
 echo "Running: cmake ${CMAKE_FLAGS} ${cmake_flags} ${srcdir} >> ${configure_output} 2>&1"
@@ -211,6 +304,9 @@ do
   sed -i 's#-fvisibility=hidden##g' ${line}
   sed -i 's#-msse2##g' ${line}
   sed -i 's#-Wl,--pic-executable##g' ${line}
+  sed -i 's#-D_GLIBCXX_USE_CXX11_ABI=1##g' ${line}
+  sed -i 's#-fno-color-diagnostics##g' ${line}
+  sed -i 's#pthreadpool_interface#pthreadpool#g' ${line}
   touch -r "${line}.orig" -acm ${line}
   rm -f "${line}.orig"
 done < ${listfile}
@@ -239,11 +335,37 @@ do
   sed -i 's#-Wl,--as-needed -Wl,--as-needed#-Wl,--as-needed#g' ${line}
   sed -i 's#"##g' ${line}
   sed -i 's#-Wl,--pic-executable##g' ${line}
+  sed -i 's#-D_GLIBCXX_USE_CXX11_ABI=1##g' ${line}
+  sed -i 's#-fno-color-diagnostics##g' ${line}
+  sed -i 's#pthreadpool_interface#pthreadpool#g' ${line}
   touch -r "${line}.orig" -acm ${line}
   rm -f "${line}.orig"
 done < ${listfile}
 
 rm -f ${listfile}
+cd ${here}
+
+if [ ${use_system_onnx} -eq 0 ] ; then
+  onnxdir="${here}/third_party/onnx/onnx"
+
+  echo "Patching Torch ONNX Protobuf files ..."
+  for file in \
+    onnx-data_onnx_torch.pb.h \
+    onnx-data.pb.h \
+    onnx-ml.pb.h \
+    onnx_onnx_torch-ml.pb.h \
+    onnx-operators-ml.pb.h \
+    onnx-operators_onnx_torch-ml.pb.h
+  do
+    if [ -e "${onnxdir}/${file}" ] ; then
+      echo "Patching ONNX file ${file} ...."
+      cp -fp "${onnxdir}/${file}" "${onnxdir}/${file}.orig"
+      sed -i 's#ONNX_API ##g' "${onnxdir}/${file}"
+      touch -r "${onnxdir}/${file}.orig" -acm "${onnxdir}/${file}"
+    fi
+  done
+fi
+
 echo "Done."
 echo "Done." >> ${configure_output} 2>&1
 

@@ -18,7 +18,7 @@ option(SLEEF_BUILD_INLINE_HEADERS "Build header for inlining whole SLEEF functio
 
 option(SLEEF_TEST_ALL_IUT "Perform tests on implementations with all vector extensions" OFF)
 option(SLEEF_SHOW_CONFIG "Show SLEEF configuration status messages." ON)
-option(SLEEF_SHOW_ERROR_LOG "Show cmake error log." OFF)
+option(SLEEF_SHOW_ERROR_LOG "Show cmake error log." ON)
 option(SLEEF_ASAN "Enable address sanitizing on all targets." OFF)
 
 option(SLEEF_ENFORCE_TESTER "Build fails if tester is not available" OFF)
@@ -31,7 +31,12 @@ option(SLEEF_DISABLE_FFTW "Disable testing the DFT library with FFTW" OFF)
 option(SLEEF_DISABLE_MPFR "Disable testing with the MPFR library" OFF)
 option(SLEEF_DISABLE_SSL "Disable testing with the SSL library" OFF)
 
-option(SLEEF_ENABLE_CUDA "Enable CUDA" ON)
+if (APPLE)
+  option(SLEEF_ENABLE_CUDA "Enable CUDA" OFF)
+else()
+  option(SLEEF_ENABLE_CUDA "Enable CUDA" ON)
+endif()
+
 option(SLEEF_ENABLE_CXX "Enable C++" ON)
 
 option(SLEEF_BUILD_WITH_LIBM "build libsleef with libm, can turn off on Windows to solve mutiple math functions issue." ON)
@@ -142,11 +147,75 @@ set(COSTOVERRIDE_RVVM2NOFMA 20)
 enable_testing()
 
 if (SLEEF_ENABLE_CXX)
+  message(STATUS "SLEEF_ENABLE_CXX: ${SLEEF_ENABLE_CXX}")
   enable_language(CXX)
 endif()
 
 if (SLEEF_ENABLE_CUDA)
+  message(STATUS "SLEEF_ENABLE_CUDA: ${SLEEF_ENABLE_CUDA}")
   enable_language(CUDA)
+endif()
+
+if (LINUX)
+  string(REPLACE "-fPIC" "-fno-PIC" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fpic" "-fno-pic" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fPIE" "-fno-PIE" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fpie" "-fno-pie" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fno-color-diagnostics" "-fno-color-diagnostics -fno-PIC -fno-PIE"
+         CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fno-color-diagnostics" "-fno-color-diagnostics -fno-PIC -fno-PIE"
+         CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fPIC" "-fno-PIC" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fpic" "-fno-pic" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fPIE" "-fno-PIE" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fpie" "-fno-pie" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
+  message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+  message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+  message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+  message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+  message(STATUS "CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}")
+endif()
+
+if (APPLE AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  string(REPLACE "-fPIC" "-fno-PIC" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fpic" "-fno-pic" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fPIE" "-fno-PIE" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fpie" "-fno-pie" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fno-color-diagnostics" "-fno-color-diagnostics -fno-PIC -fno-PIE"
+         CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-fno-color-diagnostics" "-fno-color-diagnostics -fno-PIC -fno-PIE"
+         CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fPIC" "-fno-PIC" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fpic" "-fno-pic" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fPIE" "-fno-PIE" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-fpie" "-fno-pie" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+  string(REPLACE "-Wl,-headerpad_max_install_names" ""
+         CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+
+  string(REPLACE "-Wl,-search_paths_first" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+  string(REPLACE "-Wl,-search_paths_first" ""
+         CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+
+  message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+  message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+  message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+  message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+  message(STATUS "CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}")
 endif()
 
 # For specifying installation directories
@@ -295,9 +364,11 @@ install(
     COMPONENT sleef_Development
 )
 
+message(STATUS "SLEEF_SHOW_CONFIG: ${SLEEF_SHOW_CONFIG}")
+
 # Extra messages at configuration time. By default is active, it can be
 # turned off by invoking cmake with "-DSLEEF_SHOW_CONFIG=OFF".
-if(SLEEF_SHOW_CONFIG)
+if (SLEEF_SHOW_CONFIG)
   message(STATUS "Configuring build for ${PROJECT_NAME}-v${SLEEF_VERSION}")
   message("   Target system: ${CMAKE_SYSTEM}")
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_OSX_ARCHITECTURES MATCHES "^(x86_64|arm64)$")

@@ -8,7 +8,13 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(WERROR False)
-set(USE_CUDA True)
+
+if (APPLE OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  set(USE_CUDA False)
+else()
+  set(USE_CUDA True)
+endif()
+
 set(USE_ROCM False)
 set(C10_BUILD_SHARED_LIBS True)
 
@@ -30,7 +36,11 @@ endif()
   set(C10_USE_GFLAGS ${USE_GFLAGS}) # used in cmake_macros.h.in
   set(C10_USE_GLOG ${USE_GLOG}) # used in cmake_macros.h.in
   set(C10_BUILD_SHARED_LIBS True) # used in cmake_macros.h.in
-  set(C10_USE_NUMA True)
+  if (LINUX)
+    set(C10_USE_NUMA True)
+  elseif (APPLE)
+    set(C10_USE_NUMA False)
+  endif()
   set(C10_USE_MSVC_STATIC_RUNTIME ${CAFFE2_USE_MSVC_STATIC_RUNTIME})
   set(C10_USE_ROCM_KERNEL_ASSERT ${USE_ROCM_KERNEL_ASSERT})
   configure_file(
@@ -63,6 +73,14 @@ if(NOT BUILD_LIBTORCHLESS)
     set_target_properties(c10 PROPERTIES
         VERSION ${TORCH_VERSION} SOVERSION ${TORCH_SOVERSION})
   endif()
+
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    string(REPLACE "-fcolor-diagnostics" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+    string(REPLACE "-fcolor-diagnostics" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string(APPEND CMAKE_C_FLAGS " -fno-color-diagnostics")
+    string(APPEND CMAKE_CXX_FLAGS " -fno-color-diagnostics")
+  endif()
+
   # If building shared library, set dllimport/dllexport proper.
   target_compile_options(c10 PRIVATE "-DC10_BUILD_MAIN_LIB")
 

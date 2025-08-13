@@ -52,16 +52,21 @@ add_compile_options(
 
 add_definitions("-DNDEBUG")
 add_definitions("-D_GNU_SOURCE")
-add_definitions("-D_XOPEN_SOURCE=700")
-add_definitions("-DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
-add_definitions("-DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
-add_definitions("-DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+
+if (LINUX)
+  add_definitions("-D_XOPEN_SOURCE=700")
+  add_definitions("-DCUTLASS_ENABLE_TENSOR_CORE_MMA=1")
+  add_definitions("-DCUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES=1")
+  add_definitions("-DCUTE_SM90_EXTENDED_MMA_SHAPES_ENABLED")
+elseif (APPLE)
+  add_definitions("-D_DARWIN_C_SOURCE")
+endif()
 
 message(STATUS "Compiling PyTorch on ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if (LINUX AND ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
   if ((${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU") OR
-      (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang"))
+      (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     add_compile_options("-msse2")
   endif()
 endif()
@@ -95,20 +100,8 @@ endif()
 string(APPEND CMAKE_CUDA_FLAGS
        " -DLIBCUDACXX_ENABLE_SIMPLIFIED_COMPLEX_OPERATIONS")
 
-if(LINUX)
-  include(cmake/CheckAbi.cmake)
-  string(APPEND CMAKE_CXX_FLAGS
-         " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")
-  string(APPEND CMAKE_CUDA_FLAGS
-         " -D_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI}")
-  if(${GLIBCXX_USE_CXX11_ABI} EQUAL 1)
-    set(CXX_STANDARD_REQUIRED ON)
-  else()
-    # Please note this is required in order to ensure compatibility between gcc
-    # 9 and gcc 7 This could be removed when all Linux PyTorch binary builds are
-    # compiled by the same toolchain again
-    append_cxx_flag_if_supported("-fabi-version=11" CMAKE_CXX_FLAGS)
-  endif()
+if (LINUX)
+  message(STATUS "-D_GLIBCXX_USE_CXX11_ABI should NEVER be passed on compile line.")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -219,18 +212,25 @@ endif()
 
 # For non-supported platforms, turn USE_DISTRIBUTED off by default. It is not
 # tested and likely won't work without additional changes.
-if(NOT LINUX AND NOT WIN32)
-  set(USE_DISTRIBUTED
-      OFF
-      CACHE STRING "Use distributed")
-  # On macOS, if USE_DISTRIBUTED is enabled (specified by the user), then make
-  # Gloo build with the libuv transport.
-  if(APPLE AND USE_DISTRIBUTED)
-    set(USE_LIBUV
-        ON
-        CACHE STRING "")
+if (NOT LINUX AND NOT WIN32 AND NOT APPLE)
+  set(USE_DISTRIBUTED OFF CACHE BOOL "Use distributed")
+endif()
+
+# On macOS, if USE_DISTRIBUTED is enabled (specified by the user), then make
+# Gloo build with the libuv transport.
+if (LINUX OR APPLE AND USE_DISTRIBUTED)
+  set(USE_LIBUV ON CACHE BOOL "USE_LIBUV" FORCE)
+endif()
+
+if (NOT DEFINED Python3_EXECUTABLE)
+  find_package(Python3 COMPONENTS Interpreter)
+  if (NOT Python3_FOUND)
+    set(Python3_EXECUTABLE "python3")
   endif()
 endif()
+
+message(STATUS "Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
+set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE} CACHE STRING "Python3" FORCE)
 
 # ---[ Options. Note to developers: if you add an option below, make sure you
 # also add it to cmake/Summary.cmake so that the summary prints out the option
@@ -277,11 +277,22 @@ cmake_dependent_option(
   "USE_CUDA AND LINUX AND BUILD_PYTHON" OFF)
 cmake_dependent_option(USE_ROCM "Use ROCm" ON "LINUX" OFF)
 option(CAFFE2_STATIC_LINK_CUDA "Statically link CUDA libraries" OFF)
-cmake_dependent_option(USE_CUDNN "Use cuDNN" ON "USE_CUDA" ON)
+if (APPLE)
+  cmake_dependent_option(USE_CUDNN "Use cuDNN" OFF "USE_CUDA" OFF)
+else()
+  cmake_dependent_option(USE_CUDNN "Use cuDNN" ON "USE_CUDA" ON)
+endif()
 cmake_dependent_option(USE_STATIC_CUDNN "Use cuDNN static libraries" OFF
                        "USE_CUDNN" OFF)
-cmake_dependent_option(USE_CUSPARSELT "Use cuSPARSELt" ON "USE_CUDA" ON)
-cmake_dependent_option(USE_CUDSS "Use cuDSS" ON "USE_CUDA" ON)
+
+if (APPLE)
+  cmake_dependent_option(USE_CUSPARSELT "Use cuSPARSELt" OFF "USE_CUDA" OFF)
+  cmake_dependent_option(USE_CUDSS "Use cuDSS" OFF "USE_CUDA" OFF)
+else()
+  cmake_dependent_option(USE_CUSPARSELT "Use cuSPARSELt" ON "USE_CUDA" ON)
+  cmake_dependent_option(USE_CUDSS "Use cuDSS" ON "USE_CUDA" ON)
+endif()
+
 # USE_ROCM is guarded against in Dependencies.cmake because USE_ROCM is not properly defined here
 cmake_dependent_option(USE_CUFILE "Use cuFile" ON "USE_CUDA AND NOT WIN32" ON)
 option(USE_FBGEMM "Use FBGEMM (quantized 8-bit server operators)" ON)
@@ -367,9 +378,10 @@ cmake_dependent_option(USE_C10D_UCC "USE C10D UCC" ON "USE_DISTRIBUTED;USE_UCC"
 cmake_dependent_option(
     USE_GLOO "Use Gloo. Only available if USE_DISTRIBUTED is on." ON
     "USE_DISTRIBUTED" OFF)
-cmake_dependent_option(
-  USE_GLOO_WITH_OPENSSL "Use Gloo with OpenSSL. Only available if USE_GLOO is on." OFF
-    "USE_GLOO AND LINUX AND NOT INTERN_BUILD_MOBILE" OFF)
+cmake_dependent_option(USE_GLOO_WITH_OPENSSL
+                       "Use Gloo with OpenSSL. Only available if USE_GLOO is on."
+                       ON
+                       "USE_GLOO AND LINUX AND NOT INTERN_BUILD_MOBILE" ON)
 cmake_dependent_option(
     USE_C10D_GLOO "USE C10D GLOO" ON "USE_DISTRIBUTED;USE_GLOO" OFF)
 cmake_dependent_option(
@@ -418,6 +430,15 @@ if(WIN32)
 endif()
 
 message(STATUS "BUILD_LIBTORCHLESS: ${BUILD_LIBTORCHLESS}")
+
+# OpenMP on MacOS is in /usr/local
+if (APPLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  add_compile_options("-I/usr/local/include")
+endif()
+
+if (LINUX AND USE_CUDA)
+  add_compile_options("-I${CUDA_TOOLKIT_TARGET_INCLUDE}")
+endif()
 
 if(USE_CCACHE)
   find_program(CCACHE_PROGRAM ccache)
@@ -495,25 +516,86 @@ option(USE_SYSTEM_XNNPACK "Use system-provided xnnpack." OFF)
 option(USE_SYSTEM_NVTX "Use system-provided nvtx." OFF)
 option(USE_GOLD_LINKER "Use ld.gold to link" OFF)
 
-if(USE_SYSTEM_LIBS)
-  set(USE_SYSTEM_CPUINFO ON)
-  set(USE_SYSTEM_SLEEF OFF)
-  set(USE_SYSTEM_GLOO OFF)
-  set(BUILD_CUSTOM_PROTOBUF OFF)
-  set(USE_SYSTEM_EIGEN_INSTALL ON)
-  set(USE_SYSTEM_FP16 OFF)
-  set(USE_SYSTEM_PTHREADPOOL OFF)
-  set(USE_SYSTEM_PSIMD OFF)
-  set(USE_SYSTEM_FXDIV OFF)
-  set(USE_SYSTEM_BENCHMARK OFF)
-  set(USE_SYSTEM_ONNX OFF)
-  set(USE_SYSTEM_XNNPACK OFF)
-  set(USE_SYSTEM_PYBIND11 ON)
-  if(USE_NCCL)
-    set(USE_SYSTEM_NCCL ON)
+if (USE_SYSTEM_LIBS)
+  if (LINUX)
+    set(USE_SYSTEM_CPUINFO ON CACHE BOOL "USE_SYSTEM_CPUINFO" FORCE)
+  elseif (APPLE)
+    set(USE_SYSTEM_CPUINFO OFF CACHE BOOL "USE_SYSTEM_CPUINFO" FORCE)
   endif()
-  set(USE_SYSTEM_NVTX ON)
+  if (LINUX)
+    set(USE_SYSTEM_SLEEF ON CACHE BOOL "USE_SYSTEM_SLEEF" FORCE)
+  elseif(APPLE)
+    set(USE_SYSTEM_SLEEF ON CACHE BOOL "USE_SYSTEM_SLEEF" FORCE)
+  else()
+    set(USE_SYSTEM_SLEEF OFF CACHE BOOL "USE_SYSTEM_SLEEF" FORCE)
+  endif()
+  set(USE_SYSTEM_GLOO OFF CACHE BOOL "USE_SYSTEM_GLOO" FORCE)
+  set(BUILD_CUSTOM_PROTOBUF OFF CACHE BOOL "BUILD_CUSTOM_PROTOBUF" FORCE)
+  if (LINUX)
+    set(USE_SYSTEM_EIGEN_INSTALL ON CACHE BOOL "USE_SYSTEM_EIGEN_INSTALL" FORCE)
+  else()
+    set(USE_SYSTEM_EIGEN_INSTALL OFF CACHE BOOL "USE_SYSTEM_EIGEN_INSTALL" FORCE)
+  endif()
+  if (LINUX)
+    set(USE_SYSTEM_FP16 ON CACHE BOOL "USE_SYSTEM_FP16" FORCE)
+  else()
+    set(USE_SYSTEM_FP16 OFF CACHE BOOL "USE_SYSTEM_FP16" FORCE)
+  endif()
+  if (LINUX)
+    set(USE_SYSTEM_PTHREADPOOL ON CACHE BOOL "USE_SYSTEM_PTHREADPOOL" FORCE)
+  else()
+    set(USE_SYSTEM_PTHREADPOOL OFF CACHE BOOL "USE_SYSTEM_PTHREADPOOL" FORCE)
+  endif()
+  if (LINUX)
+    set(USE_SYSTEM_PSIMD ON CACHE BOOL "USE_SYSTEM_PSIMD" FORCE)
+  else()
+    set(USE_SYSTEM_PSIMD OFF CACHE BOOL "USE_SYSTEM_PSIMD" FORCE)
+  endif()
+  if (LINUX)
+    set(USE_SYSTEM_FXDIV ON CACHE BOOL "USE_SYSTEM_FXDIV" FORCE)
+  else()
+    set(USE_SYSTEM_FXDIV OFF CACHE BOOL "USE_SYSTEM_FXDIV" FORCE)
+  endif()
+  set(USE_SYSTEM_BENCHMARK OFF CACHE BOOL "USE_SYSTEM_BENCHMARK" FORCE)
+  set(USE_SYSTEM_ONNX OFF CACHE BOOL "USE_SYSTEM_ONNX" FORCE)
+  set(USE_SYSTEM_XNNPACK OFF CACHE BOOL "USE_SYSTEM_XNNPACK" FORCE)
+  set(USE_SYSTEM_PYBIND11 ON CACHE BOOL "USE_SYSTEM_PYBIND11" FORCE)
+  if(USE_NCCL)
+    set(USE_SYSTEM_NCCL ON CACHE BOOL "USE_SYSTEM_NCCL" FORCE)
+  endif()
+  if (LINUX)
+    set(USE_SYSTEM_NVTX ON CACHE BOOL "USE_SYSTEM_NVTX" FORCE)
+  else()
+    set(USE_SYSTEM_NVTX OFF CACHE BOOL "USE_SYSTEM_NVTX" FORCE)
+  endif()
 endif()
+
+if (NOT ${CMAKE_C_FLAGS} STREQUAL "")
+  set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} CACHE STRING "CMAKE_C_FLAGS" FORCE)
+endif()
+if (NOT ${CMAKE_CXX_FLAGS} STREQUAL "")
+  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} CACHE STRING "CMAKE_CXX_FLAGS" FORCE)
+endif()
+
+message(STATUS "")
+message(STATUS "********** Options Summary **********")
+message(STATUS "USE_SYSTEM_CPUINFO:           ${USE_SYSTEM_CPUINFO}")
+message(STATUS "USE_SYSTEM_SLEEF:             ${USE_SYSTEM_SLEEF}")
+message(STATUS "USE_SYSTEM_GLOO:              ${USE_SYSTEM_GLOO}")
+message(STATUS "BUILD_CUSTOM_PROTOBUF:        ${BUILD_CUSTOM_PROTOBUF}")
+message(STATUS "USE_SYSTEM_EIGEN_INSTALL:     ${USE_SYSTEM_EIGEN_INSTALL}")
+message(STATUS "USE_SYSTEM_FP16:              ${USE_SYSTEM_FP16}")
+message(STATUS "USE_SYSTEM_PTHREADPOOL:       ${USE_SYSTEM_PTHREADPOOL}")
+message(STATUS "USE_SYSTEM_PSIMD:             ${USE_SYSTEM_PSIMD}")
+message(STATUS "USE_SYSTEM_FXDIV:             ${USE_SYSTEM_FXDIV}")
+message(STATUS "USE_SYSTEM_BENCHMARK:         ${USE_SYSTEM_BENCHMARK}")
+message(STATUS "USE_SYSTEM_ONNX:              ${USE_SYSTEM_ONNX}")
+message(STATUS "USE_SYSTEM_XNNPACK:           ${USE_SYSTEM_XNNPACK}")
+message(STATUS "USE_SYSTEM_PYBIND11:          ${USE_SYSTEM_PYBIND11}")
+message(STATUS "USE_SYSTEM_NCCL:              ${USE_SYSTEM_NCCL}")
+message(STATUS "USE_SYSTEM_NVTX:              ${USE_SYSTEM_NVTX}")
+message(STATUS "******** End Options Summary ********")
+message(STATUS "")
 
 # /Z7 override option When generating debug symbols, CMake default to use the
 # flag /Zi. However, it is not compatible with sccache. So we rewrite it off.
@@ -942,21 +1024,6 @@ if(USE_PYTORCH_QNNPACK)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_PYTORCH_QNNPACK")
 endif()
 
-# Enable sleef on macOS with Apple silicon by default
-if((${CMAKE_SYSTEM_NAME} STREQUAL "Darwin") AND ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64"))
-  message(STATUS "Running on macOS with Apple silicon")
-  string(APPEND CMAKE_CXX_FLAGS " -DAT_BUILD_ARM_VEC256_WITH_SLEEF")
-  add_definitions(-DAT_BUILD_ARM_VEC256_WITH_SLEEF)
-endif()
-
-# Enable sleef on Arm(R) architecture by default (except Android)
-if((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-  AND("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "aarch64"))
-  string(APPEND CMAKE_CXX_FLAGS " -DAT_BUILD_ARM_VEC256_WITH_SLEEF")
-  add_definitions(-DAT_BUILD_ARM_VEC256_WITH_SLEEF)
-endif()
-
-
 if(USE_XNNPACK)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_XNNPACK")
 endif()
@@ -1055,23 +1122,23 @@ if(NOT MSVC)
 
   # Use ld.gold if available, fall back to ld.bfd (the default ld) if not
   if(USE_GOLD_LINKER)
-      execute_process(
-        COMMAND "${CMAKE_C_COMPILER}" -fuse-ld=gold -Wl,--version
-        ERROR_QUIET
-        OUTPUT_VARIABLE LD_VERSION)
-      if(NOT "${LD_VERSION}" MATCHES "GNU gold")
+    execute_process(
+      COMMAND "${CMAKE_C_COMPILER}" -fuse-ld=gold -Wl,--version
+      ERROR_QUIET
+      OUTPUT_VARIABLE LD_VERSION)
+    if(NOT "${LD_VERSION}" MATCHES "GNU gold")
       message(WARNING
               "USE_GOLD_LINKER was set but ld.gold isn't available, turning it off")
-        set(USE_GOLD_LINKER OFF)
-      else()
-        message(STATUS "ld.gold is available, using it to link")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
-        set(CMAKE_SHARED_LINKER_FLAGS
-            "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
-        set(CMAKE_MODULE_LINKER_FLAGS
-            "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=gold")
-      endif()
+      set(USE_GOLD_LINKER OFF)
+    else()
+      message(STATUS "ld.gold is available, using it to link")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
+      set(CMAKE_SHARED_LINKER_FLAGS
+          "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
+      set(CMAKE_MODULE_LINKER_FLAGS
+          "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=gold")
     endif()
+  endif()
 
   if (LINUX AND ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
                  "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
@@ -1229,12 +1296,19 @@ if(USE_CPP_CODE_COVERAGE)
 
 endif()
 
-if(APPLE)
-  if(USE_MPS)
+if (APPLE)
+  set(CMAKE_OBJC_COMPILER ${CMAKE_C_COMPILER})
+  set(CMAKE_OBJCXX_COMPILER ${CMAKE_CXX_COMPILER})
+  set(CMAKE_LINKER_TYPE LLD)
+  if (USE_MPS)
+    string(APPEND CMAKE_OBJC_FLAGS " -fuse-ld=lld")
+    string(APPEND CMAKE_OBJC_FLAGS " -fno-color-diagnostics")
+    string(APPEND CMAKE_OBJC_FLAGS " -DUSE_MPS -fno-objc-arc")
+    string(APPEND CMAKE_OBJCXX_FLAGS " -fuse-ld=lld")
+    string(APPEND CMAKE_OBJCXX_FLAGS " -fno-color-diagnostics")
     string(APPEND CMAKE_OBJCXX_FLAGS " -DUSE_MPS -fno-objc-arc")
     string(APPEND CMAKE_CXX_FLAGS " -DUSE_MPS")
-    string(
-      APPEND
+    string(APPEND
       CMAKE_SHARED_LINKER_FLAGS
       " -weak_framework Foundation -weak_framework MetalPerformanceShaders -weak_framework MetalPerformanceShadersGraph -weak_framework Metal"
     )

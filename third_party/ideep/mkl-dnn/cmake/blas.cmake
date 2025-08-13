@@ -19,12 +19,19 @@
 if(blas_cmake_included)
     return()
 endif()
+
 set(blas_cmake_included true)
 include("cmake/options.cmake")
 
+message(STATUS "_DNNL_USE_MKL: ${_DNNL_USE_MKL}")
+
 # Retains existing functionality of _DNNL_USE_MKL
-if(_DNNL_USE_MKL)
+if (_DNNL_USE_MKL)
     set(DNNL_BLAS_VENDOR "MKL")
+endif()
+
+if (APPLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  set(DNNL_BLAS_VENDOR "OPENBLAS")
 endif()
 
 if(DNNL_BLAS_VENDOR STREQUAL "NONE")
@@ -69,15 +76,25 @@ elseif(DNNL_BLAS_VENDOR STREQUAL "ARMPL")
     endif()
 endif()
 
-find_package(BLAS REQUIRED)
+find_package(OpenBLAS REQUIRED)
+
+message(STATUS "BLAS_FOUND: ${BLAS_FOUND}")
 
 if(BLAS_FOUND)
-     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BLAS_LINKER_FLAGS}")
-     list(APPEND EXTRA_SHARED_LIBS BLAS::BLAS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BLAS_LINKER_FLAGS}")
+    if (APPLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+      set(BLAS_COMPILER_FLAGS -I${OpenBLAS_INCLUDE_DIR})
+      list(APPEND EXTRA_SHARED_LIBS ${OpenBLAS_LIB})
+    else()
+      list(APPEND EXTRA_SHARED_LIBS BLAS::BLAS)
+    endif()
 
      # Check that the BLAS library supports the CBLAS interface.
      set(CMAKE_REQUIRED_LIBRARIES "${BLAS_LINKER_FLAGS};${BLAS_LIBRARIES}")
      set(CMAKE_REQUIRED_FLAGS "${BLAS_COMPILER_FLAGS}")
+
+     message(STATUS "CMAKE_REQUIRED_LIBRARIES: ${CMAKE_REQUIRED_LIBRARIES}")
+     message(STATUS "CMAKE_REQUIRED_FLAGS: ${CMAKE_REQUIRED_FLAGS}")
 
      # Find and include  accompanying cblas.h
      list(GET BLAS_LIBRARIES 0 FIRST_BLAS_LIB)
@@ -88,11 +105,18 @@ if(BLAS_FOUND)
      # Check we have a working CBLAS interface
      unset(CBLAS_WORKS CACHE)
      check_function_exists(cblas_sgemm CBLAS_WORKS)
+
+     message(STATUS "CBLAS_WORKS: ${CBLAS_WORKS}")
+
      if(NOT CBLAS_WORKS)
          message(FATAL_ERROR "BLAS library does not support CBLAS interface.")
      endif()
 
+     unset(BLAS_HAS_SBGEMM CACHE)
      check_function_exists(cblas_sbgemm BLAS_HAS_SBGEMM)
+
+     message(STATUS "BLAS_HAS_SBGEMM: ${BLAS_HAS_SBGEMM}")
+
      if(BLAS_HAS_SBGEMM)
          add_definitions(-DBLAS_HAS_SBGEMM)
      endif()
@@ -106,5 +130,9 @@ if(BLAS_FOUND)
 
      if (DNNL_BLAS_VENDOR STREQUAL "ACCELERATE")
          add_definitions(-DUSE_ACCELERATE)
+     endif()
+
+     if (DNNL_BLAS_VENDOR STREQUAL "OPENBLAS")
+         add_definitions(-DUSE_OPENBLAS)
      endif()
 endif()

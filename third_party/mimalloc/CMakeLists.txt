@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.20)
+
 project(libmimalloc C CXX)
 
 set(CMAKE_C_STANDARD 11)
@@ -54,7 +55,11 @@ set(mi_sources
     src/stats.c
     src/prim/prim.c)
 
-set(mi_cflags "")
+list (APPEND mi_cflags ${CMAKE_C_FLAGS})
+if (MI_USE_CXX)
+  list (APPEND mi_cflags ${CMAKE_CXX_FLAGS})
+endif()
+
 set(mi_libraries "")
 
 # -----------------------------------------------------------------------------
@@ -269,7 +274,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
 
 # Compiler flags
 if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
-  list(APPEND mi_cflags -Wall -Wextra -Wno-unknown-pragmas -fvisibility=hidden)
+  list(APPEND mi_cflags -Wall -Wextra -Wno-unknown-pragmas)
   if(NOT MI_USE_CXX)
     list(APPEND mi_cflags -Wstrict-prototypes)
   endif()

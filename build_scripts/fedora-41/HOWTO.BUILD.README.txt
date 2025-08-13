@@ -101,14 +101,12 @@
 
    - You can build both, but make sure you build them in the following order:
 
-    1. %> ./build-python-wheel-libtorch-whl.sh
-    2. Save the 'dist' directory just created:
-       %> mv ./dist ./dist-libtorch
+    1. %> ./build-python-wheel-libtorch-whl-sm89.sh
 
-    3. %> ./build-python-wheel-python-only-whl.sh
-       %> mv ./dist ./dist-python
+    2. %> ./build-python-wheel-python-only-whl-sm89.sh
 
-    4. The Wheels will be inside the directories you just renamed.
+    3. Each build script renames the 'build' and 'dist' directories to avoid
+       overwriting them.
 
     5. You can install both Wheels, provided that you install the Libtorch
        Wheel first. The Libtorch (C++) whl installs a few Python files that
@@ -116,7 +114,11 @@
 
 9. That's it.
 
-10. Ubuntu build instructions to follow. Maybe. I am not a fan of Ubuntu.
+10. No Ubuntu. I don't want to have to deal with dpkg and all the other
+    Ubuntu / Debian "peculiarities".
     Note: These Fedora build scripts will NOT work on Ubuntu.
+
+11. If interested, please contact me directly for Fedora 41 / CUDA 12.9 rpms
+    based on this source code tree.
 
 

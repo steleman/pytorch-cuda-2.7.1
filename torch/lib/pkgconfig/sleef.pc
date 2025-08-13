@@ -1,0 +1,9 @@
+prefix=/Volumes/CT4000P34TB/src/steleman/programming/libtorch/20250609/pytorch-2.7.1/torch
+libdir=/Volumes/CT4000P34TB/src/steleman/programming/libtorch/20250609/pytorch-2.7.1/torch/lib
+includedir=/Volumes/CT4000P34TB/src/steleman/programming/libtorch/20250609/pytorch-2.7.1/torch/include
+
+Name: SLEEF
+Description: SIMD Library for Evaluating Elementary Functions, vectorized libm and DFT
+Version: 3.7.0
+Cflags: -I${includedir}
+Libs: -L${libdir} -lsleef

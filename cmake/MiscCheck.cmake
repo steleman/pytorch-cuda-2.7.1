@@ -93,12 +93,17 @@ endif()
 
 # ---[ Check if the compiler has SVE support.
 find_package(ARM) # checks SVE
-if(CXX_SVE_FOUND)
+
+if (CXX_SVE_FOUND)
   message(STATUS "Compiler supports SVE extension. Will build perfkernels.")
   # Also see CMakeLists.txt under caffe2/perfkernels.
   add_compile_definitions(CAFFE2_PERF_WITH_SVE=1)
 else()
-  message(STATUS "Compiler does not support SVE extension. Will not build perfkernels.")
+  if (APPLE)
+    message(STATUS "Building on MacOS ARM64. Will not build perfkernels.")
+  else()
+    message(STATUS "Compiler does not support SVE extension. Will not build perfkernels.")
+  endif()
 endif()
 
 if(IOS AND (${IOS_ARCH} MATCHES "armv7*"))

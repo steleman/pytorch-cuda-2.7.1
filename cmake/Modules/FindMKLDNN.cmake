@@ -16,14 +16,21 @@ IF(NOT MKLDNN_FOUND)
   SET(MKLDNN_LIBRARIES)
   SET(MKLDNN_INCLUDE_DIR)
 
-  SET(IDEEP_ROOT "${PROJECT_SOURCE_DIR}/third_party/ideep")
-  SET(MKLDNN_ROOT "${PROJECT_SOURCE_DIR}/third_party/ideep/mkl-dnn")
+  message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+
+  set(IDEEP_ROOT "${CMAKE_SOURCE_DIR}/third_party/ideep")
+  set(MKLDNN_ROOT "${CMAKE_SOURCE_DIR}/third_party/ideep/mkl-dnn")
+  set(IDEEP_BINARY_ROOT "${CMAKE_BINARY_DIR}/third_party/ideep")
+  set(MKLDNN_BINARY_ROOT "${CMAKE_BINARY_DIR}/third_party/ideep/mkl-dnn")
+
+  message(STATUS "IDEEP_ROOT: ${IDEEP_ROOT}")
+  message(STATUS "MKLDNN_ROOT: ${MKLDNN_ROOT}")
 
   if(USE_XPU) # Build oneDNN GPU library
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       # Linux
       # g++ is soft linked to /usr/bin/cxx, oneDNN would not treat it as an absolute path
-      set(DNNL_HOST_COMPILER "g++")
+      set(DNNL_HOST_COMPILER "/usr/bin/g++")
       set(SYCL_CXX_DRIVER "icpx")
       set(DNNL_LIB_NAME "libdnnl.a")
     else()
@@ -92,7 +99,7 @@ IF(NOT MKLDNN_FOUND)
     SET(DNNL_EXPERIMENTAL_UKERNEL ON CACHE BOOL "" FORCE)
   ENDIF(EXISTS "${MKLDNN_ROOT}/include/oneapi/dnnl/dnnl_ukernel.hpp")
 
-  FIND_PACKAGE(BLAS)
+  FIND_PACKAGE(OpenBLAS)
   FIND_PATH(IDEEP_INCLUDE_DIR ideep.hpp PATHS ${IDEEP_ROOT} PATH_SUFFIXES include)
   FIND_PATH(MKLDNN_INCLUDE_DIR dnnl.hpp dnnl.h dnnl_ukernel.hpp dnnl_ukernel.h PATHS ${MKLDNN_ROOT} PATH_SUFFIXES include/oneapi/dnnl)
   IF(NOT MKLDNN_INCLUDE_DIR)
@@ -165,7 +172,7 @@ IF(NOT MKLDNN_FOUND)
     ENDIF()
   ENDIF()
 
-  ADD_SUBDIRECTORY(${MKLDNN_ROOT})
+  ADD_SUBDIRECTORY(${MKLDNN_ROOT} ${MKLDNN_BINARY_ROOT})
 
   IF(NOT TARGET dnnl)
     MESSAGE("Failed to include MKL-DNN target")

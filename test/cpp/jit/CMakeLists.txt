@@ -15,19 +15,18 @@ set(BACKEND_WITH_COMPILER_SRCS
   ${JIT_TEST_ROOT}/test_backend_compiler_lib.cpp
   ${JIT_TEST_ROOT}/test_backend_compiler_preprocess.cpp
 )
-if(USE_KINETO)
+if (USE_KINETO)
   # Testing edge profiler for backend use
   # profiler_edge should only be aded when USE_KINETO flag is on
   list(APPEND BACKEND_WITH_COMPILER_SRCS
     ${TORCH_SRC_DIR}/csrc/jit/mobile/profiler_edge.cpp)
 endif()
 
-add_library(backend_with_compiler SHARED
-        ${BACKEND_WITH_COMPILER_SRCS}
-        )
-if(USE_KINETO)
-  set_target_properties(backend_with_compiler PROPERTIES COMPILE_FLAGS
-  "-DUSE_KINETO")
+add_library(backend_with_compiler SHARED ${BACKEND_WITH_COMPILER_SRCS})
+
+if (USE_KINETO)
+  set_target_properties(backend_with_compiler PROPERTIES
+                        COMPILE_FLAGS "-DUSE_KINETO")
 endif()
 target_link_libraries(backend_with_compiler torch)
 
@@ -97,25 +96,19 @@ set(JIT_TEST_SRCS
 
 add_executable(test_jit
   ${TORCH_ROOT}/test/cpp/common/main.cpp
-  ${JIT_TEST_SRCS}
-)
+  ${JIT_TEST_SRCS})
 
 # We also build with UBSAN flag in build_asan.h
-if(USE_ASAN)
+if (USE_ASAN)
   target_compile_options(test_jit PRIVATE "-fsanitize=undefined")
   target_link_libraries(test_jit PRIVATE "-fsanitize=undefined")
 endif()
 
-target_link_libraries(
-  test_jit PRIVATE flatbuffers)
-
+target_link_libraries(test_jit PRIVATE flatbuffers)
+target_link_libraries(test_jit PRIVATE onnx_proto onnx)
 
 # TODO temporary until we can delete the old gtest polyfills.
 target_compile_definitions(test_jit PRIVATE USE_GTEST)
-
-if(USE_SYSTEM_ONNX)
-  target_link_libraries(test_jit PRIVATE onnx_proto onnx)
-endif()
 
 if(USE_MKLDNN)
   target_link_libraries(test_jit PRIVATE caffe2::mkldnn)
@@ -123,20 +116,21 @@ endif()
 
 set(JIT_TEST_DEPENDENCIES torch gtest jitbackend_test backend_with_compiler)
 
-if(MSVC)
+if (MSVC)
   list(APPEND JIT_TEST_DEPENDENCIES onnx_library)
 endif(MSVC)
 
 target_link_libraries(test_jit PRIVATE ${JIT_TEST_DEPENDENCIES})
 target_include_directories(test_jit PRIVATE ${ATen_CPU_INCLUDE})
 
-if(LINUX)
+if (LINUX)
   #Update to target_link_options when CMake version can be upgraded
   target_link_libraries(test_jit PRIVATE "-Wl,--no-as-needed,$<TARGET_FILE:jitbackend_test>,$<TARGET_FILE:backend_with_compiler>,--as-needed")
 endif()
 
-if(USE_CUDA)
+if (USE_CUDA)
   target_compile_definitions(test_jit PRIVATE USE_CUDA)
+  target_link_libraries(test_jit PRIVATE torch_cuda)
   # Suppress sign compare checks for NVFUSER JIT tests
   if(NOT MSVC)
     target_compile_options(test_jit PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-sign-compare>)

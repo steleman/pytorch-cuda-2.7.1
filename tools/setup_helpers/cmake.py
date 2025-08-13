@@ -7,6 +7,7 @@ import os
 import platform
 import sys
 import sysconfig
+from sys import platform
 from distutils.version import LooseVersion
 from pathlib import Path
 from subprocess import CalledProcessError, check_call, check_output
@@ -107,6 +108,7 @@ class CMake:
         "Adds definitions to a cmake argument list."
         for key, value in sorted(kwargs.items()):
             if value is not None:
+                print(f"-D{key}={value}")
                 args.append(f"-D{key}={value}")
 
     def get_cmake_cache_variables(self) -> dict[str, CMakeValue]:
@@ -139,10 +141,14 @@ class CMake:
             return
 
         args = []
+        if platform == "darwin":
+            pytorch_openblas = os.getenv("PYTORCH_OPENBLAS", "")
+            args.append("-DPYTORCH_OPENBLAS=" + pytorch_openblas)
+
         if USE_NINJA:
             # Avoid conflicts in '-G' and the `CMAKE_GENERATOR`
-            os.environ["CMAKE_GENERATOR"] = "Ninja"
-            args.append("-GNinja")
+            os.environ["CMAKE_GENERATOR"] = "Unix Makefiles"
+            args.append("-G Unix Makefiles")
         elif IS_WINDOWS:
             generator = os.getenv("CMAKE_GENERATOR", "Visual Studio 16 2019")
             supported = ["Visual Studio 16 2019", "Visual Studio 17 2022"]
@@ -231,18 +237,158 @@ class CMake:
                     "TORCH_XPU_ARCH_LIST",
                     "TRACING_BASED",
                     "PYTHON_LIB_REL_PATH",
+                    "CMAKE_BUILD_TYPE",
+                    "CMAKE_MAKE_PROGRAM",
+                    "CMAKE_C_COMPILER",
+                    "CMAKE_CXX_COMPILER",
+                    "CMAKE_CUDA_COMPILER",
+                    "CUDACXX",
+                    "CMAKE_C_FLAGS",
+                    "ONNX_CMAKE_C_FLAGS",
+                    "CMAKE_CXX_FLAGS",
+                    "ONNX_CMAKE_CXX_FLAGS",
+                    "CMAKE_C_FLAGS_RELEASE",
+                    "CMAKE_CXX_FLAGS_RELEASE",
+                    "CMAKE_C_STANDARD",
+                    "CMAKE_CXX_STANDARD",
+                    "CMAKE_C_EXTENSIONS",
+                    "CMAKE_CXX_EXTENSIONS",
+                    "CMAKE_LINKER_TYPE",
+                    "CMAKE_EXE_LINKER_FLAGS",
+                    "CMAKE_SHARED_LINKER_FLAGS",
+                    "CMAKE_MODULE_LINKER_FLAGS",
+                    "CMAKE_POSITION_INDEPENDENT_CODE",
+                    "CMAKE_VERBOSE_MAKEFILE",
+                    "CMAKE_SUPPRESS_REGENERATION",
+                    "USE_COLORIZE_OUTPUT",
+                    "BUILD_BINARY",
+                    "BUILD_CUSTOM_PROTOBUF",
+                    "BUILD_PYTHON",
+                    "BUILD_SHARED_LIBS",
+                    "BUILD_TEST",
+                    "BUILD_AOT_INDUCTOR_TEST",
+                    "BUILD_STATIC_RUNTIME_BENCHMARK",
+                    "USE_CUDA",
+                    "CUDA_MAJOR",
+                    "CUDA_MINOR",
+                    "CUDA_TOOLKIT_TARGET_INCLUDE",
+                    "CUDA_ARCH_LIST",
+                    "TORCH_CUDA_ARCH_LIST",
+                    "CUDA_nvrtc_LIBRARY",
+                    "CUDA_NVRTC_LIB",
+                    "CMAKE_CUDA_ARCHITECTURES",
+                    "BLAS",
+                    "BUILD_LAZY_CUDA_LINALG",
+                    "USE_ROCM",
+                    "USE_CUDNN",
+                    "CUSPARSELT_LIBRARY_PATH",
+                    "CUSPARSELT_INCLUDE_PATH",
+                    "USE_CUSPARSELT",
+                    "USE_CUDSS",
+                    "USE_CUFILE",
+                    "USE_CUPTI_SO",
+                    "USE_TENSORRT",
+                    "TENSORRT_LIBRARY",
+                    "TENSORRT_INCLUDE_DIR",
+                    "NCCL_ROOT_DIR",
+                    "USE_TCP_OPENSSL_LINK",
+                    "USE_TCP_OPENSSL_LINK_DEFAULT",
+                    "USE_TCP_OPENSSL_LOAD",
+                    "USE_TCP_OPENSSL_LOAD_DEFAULT",
+                    "GLOO_USE_CUDA_TOOLKIT",
+                    "GLOO_USE_TORCH_DTYPES",
+                    "BUILD_BENCHMARK",
+                    "GLOO_INSTALL",
+                    "CUTLASS_NVCC_EMBED_CUBIN",
+                    "CUTLASS_NVCC_EMBED_PTX",
+                    "CUTLASS_NVCC_VERBOSE",
+                    "CUTLASS_ENABLE_F16C",
+                    "CUTLASS_NVCC_ARCHS_ENABLED",
+                    "CUTLASS_LIBRARY_KERNELS",
+                    "CUTLASS_LIBRARY_INSTANTIATION_LEVEL",
+                    "CUTLASS_ENABLE_TENSOR_CORE_MMA_DEFAULT",
+                    "CUTLASS_ENABLE_TENSOR_CORE_MMA",
+                    "CUTLASS_ENABLE_CUBLAS",
+                    "CUTLASS_ENABLE_CUDNN",
+                    "CUTLASS_ENABLE_GDC_FOR_SM90",
+                    "CUTLASS_ENABLE_GDC_FOR_SM100",
+                    "CUTLASS_ENABLE_GDC_FOR_SM100_DEFAULT",
+                    "CUTLASS_ENABLE_SM90_EXTENDED_MMA_SHAPES",
+                    "SLEEF_SHOW_CONFIG",
+                    "SLEEF_ENABLE_LTO",
+                    "SLEEF_BUILD_SCALAR_LIB",
+                    "SLEEF_ENABLE_CUDA",
+                    "SLEEF_ENABLE_CXX",
+                    "BUILD_ONNX_PYTHON",
+                    "USE_LITE_PROTO",
+                    "USE_NCCL",
+                    "USE_SYSTEM_NCCL",
+                    "USE_XPU",
+                    "USE_NUMA",
+                    "USE_NVRTC",
+                    "USE_OPENCL",
+                    "USE_OPENMP",
+                    "USE_SYSTEM_EIGEN_INSTALL",
+                    "USE_ITT",
+                    "USE_DISTRIBUTED",
+                    "USE_UCC",
+                    "USE_GLOO",
+                    "USE_GLOO_WITH_OPENSSL",
+                    "USE_C10D_GLOO",
+                    "USE_C10D_NCCL",
+                    "USE_MPI",
+                    "USE_C10D_MPI",
+                    "USE_C10D_GLOO",
+                    "USE_C10D_NCCL",
+                    "USE_NUMPY",
+                    "USE_TENSORPIPE",
+                    "HAVE_SOVERSION",
+                    "USE_CCACHE",
+                    "BUILD_FUNCTORCH",
+                    "USE_SYSTEM_LIBS",
+                    "USE_SYSTEM_SLEEF",
+                    "USE_SYSTEM_EIGEN_INSTALL",
+                    "USE_SYSTEM_FP16",
+                    "USE_SYSTEM_PSIMD",
+                    "USE_SYSTEM_FXDIV",
+                    "USE_SYSTEM_PTHREADPOOL",
+                    "USE_SYSTEM_CPUINFO",
+                    "USE_SYSTEM_PYBIND11",
+                    "USE_SYSTEM_NVTX",
+                    "USE_GOLD_LINKER",
+                    "USE_MKLDNN",
+                    "Torch_DIR",
+                    "CUDA_TARGET_INCDIR",
+                    "CUDA_TARGET_LIBDIR",
+                    "CUDA_TOOLKIT_TARGET_INCLUDE",
+                    "MKLDNN_CPU_RUNTIME",
+                    "MKL_THREADING",
+                    "ATEN_AVX512_256",
+                    "PYTORCH_BUILD_VERSION",
+                    "PYTORCH_BUILD_NUMBER",
+                    "MKL_THREADING",
+                    "CUDAHOSTCXX",
+                    "CUDA_NVCC_EXECUTABLE",
+                    "CUDACXX",
+                    "CUDNN_LIB_DIR",
+                    "CUDNN_INCLUDE_DIR",
+                    "CUDNN_LIBRARY",
+                    "NCCL_ROOT",
+                    "NCCL_LIB_DIR",
+                    "NCCL_INCLUDE_DIR",
+                    "ATEN_THREADING",
+                    "USE_SYSTEM_LIBS",
+                    "USE_MIMALLOC",
+                    "USE_PRIORITIZED_TEXT_FOR_LD",
+                    "BUILD_LIBTORCH_WHL",
+                    "BUILD_PYTHON_ONLY",
+                    "TORCH_PACKAGE_NAME",
+                    "LIBTORCH_PACKAGE_NAME",
+                    "TORCH_PACKAGE_VERSION",
                 )
             }
         )
 
-        # Aliases which are lower priority than their canonical option
-        low_priority_aliases = {
-            "CUDA_HOST_COMPILER": "CMAKE_CUDA_HOST_COMPILER",
-            "CUDAHOSTCXX": "CUDA_HOST_COMPILER",
-            "CMAKE_CUDA_HOST_COMPILER": "CUDA_HOST_COMPILER",
-            "CMAKE_CUDA_COMPILER": "CUDA_NVCC_EXECUTABLE",
-            "CUDACXX": "CUDA_NVCC_EXECUTABLE",
-        }
         for var, val in my_env.items():
             # We currently pass over all environment variables that start with "BUILD_", "USE_", and "CMAKE_". This is
             # because we currently have no reliable way to get the list of all build options we have specified in
@@ -252,15 +398,6 @@ class CMake:
             true_var = additional_options.get(var)
             if true_var is not None:
                 build_options[true_var] = val
-            elif var.startswith(("BUILD_", "USE_", "CMAKE_")) or var.endswith(
-                ("EXITCODE", "EXITCODE__TRYRUN_OUTPUT")
-            ):
-                build_options[var] = val
-
-            if var in low_priority_aliases:
-                key = low_priority_aliases[var]
-                if key not in build_options:
-                    build_options[key] = val
 
         # The default value cannot be easily obtained in CMakeLists.txt. We set it here.
         py_lib_path = sysconfig.get_path("purelib")

@@ -364,6 +364,7 @@ cmake_python_include_dir = sysconfig.get_path("include")
 
 package_name = os.getenv("TORCH_PACKAGE_NAME", "torch")
 LIBTORCH_PKG_NAME = os.getenv("LIBTORCH_PACKAGE_NAME", "torch_no_python")
+
 if BUILD_LIBTORCH_WHL:
     package_name = LIBTORCH_PKG_NAME
 
@@ -371,6 +372,9 @@ if BUILD_LIBTORCH_WHL:
 package_type = os.getenv("PACKAGE_TYPE", "wheel")
 version = os.getenv("TORCH_PACKAGE_VERSION", get_torch_version())
 report(f"Building wheel {package_name}-{version}")
+report(f"Package Name: {package_name}")
+package_version = os.getenv("TORCH_PACKAGE_VERSION", get_torch_version())
+report(f"Package Version: {package_version}")
 
 cmake = CMake()
 

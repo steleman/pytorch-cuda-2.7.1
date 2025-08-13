@@ -405,18 +405,22 @@ ENDIF()
 
 # ---[ XNNPACK library
 
-IF (NOT DEFINED Python_EXECUTABLE)
-  find_package(Python COMPONENTS Interpreter)
+IF (NOT DEFINED Python3_EXECUTABLE)
+  find_package(Python3 COMPONENTS Interpreter)
 
-  IF(NOT Python_FOUND)
+  IF(NOT Python3_FOUND)
     SET(PYTHON_EXECUTABLE "python3")
+  ELSE()
+    SET(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
   ENDIF()
 ENDIF()
+
+message(STATUS "Found PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
 
 # Generate and load the micorkernels.cmake files.
 MESSAGE(STATUS "Generating microkernels.cmake")
 EXECUTE_PROCESS(
-  COMMAND "${Python_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/update-microkernels.py" --output "${PROJECT_BINARY_DIR}"
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/update-microkernels.py" --output "${PROJECT_BINARY_DIR}"
   RESULT_VARIABLE UPDATE_MICROKERNELS_RESULT
 )
 IF(NOT UPDATE_MICROKERNELS_RESULT EQUAL 0)
@@ -774,7 +778,7 @@ STRING(REPLACE ";" "\n" PROD_MICROKERNEL_SRCS_WITH_NEWLINES "${PROD_MICROKERNEL_
 FILE(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/prod_microkernel_srcs.txt" CONTENT "${PROD_MICROKERNEL_SRCS_WITH_NEWLINES}")
 ADD_CUSTOM_COMMAND(
   OUTPUT "${PROJECT_BINARY_DIR}/build_identifier.c"
-  COMMAND "${Python_EXECUTABLE}" "scripts/generate-build-identifier.py" --output "${PROJECT_BINARY_DIR}/build_identifier.c" --input_file_list "${PROJECT_BINARY_DIR}/prod_microkernel_srcs.txt"
+  COMMAND "${Python3_EXECUTABLE}" "scripts/generate-build-identifier.py" --output "${PROJECT_BINARY_DIR}/build_identifier.c" --input_file_list "${PROJECT_BINARY_DIR}/prod_microkernel_srcs.txt"
   DEPENDS "${PROJECT_BINARY_DIR}/prod_microkernel_srcs.txt"
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )

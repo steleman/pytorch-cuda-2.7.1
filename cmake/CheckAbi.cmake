@@ -1,5 +1,5 @@
-if(DEFINED GLIBCXX_USE_CXX11_ABI)
-  message(STATUS "_GLIBCXX_USE_CXX11_ABI=${GLIBCXX_USE_CXX11_ABI} is already defined as a cmake variable")
+if (LINUX)
+  message(STATUS "-D_GLIBCXX_USE_CXX11_ABI should NEVER be passed on compile-line.")
   return()
 endif()
 
@@ -12,7 +12,7 @@ execute_process(
   "-o"
   "${CMAKE_BINARY_DIR}/abi-check"
   RESULT_VARIABLE ABI_CHECK_COMPILE_RESULT)
-if(ABI_CHECK_COMPILE_RESULT)
+if (ABI_CHECK_COMPILE_RESULT)
   message(FATAL_ERROR "Could not compile ABI Check: ${ABI_CHECK_COMPILE_RESULT}")
   set(GLIBCXX_USE_CXX11_ABI 0)
 endif()

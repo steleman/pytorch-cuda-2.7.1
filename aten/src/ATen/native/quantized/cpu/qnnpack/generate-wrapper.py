@@ -15,7 +15,7 @@ QNNPACK_SOURCES = {
         "x8lut/scalar.c",
     ],
     # AArch32/AArch64-specific uKernels
-    "defined(__arm__) || defined(__aarch64__)": [
+    "defined(__arm__) || defined(__arm64__) || defined(__aarch64__)": [
         "q8avgpool/mp8x9p8q-neon.c",
         "q8avgpool/up8x9-neon.c",
         "q8avgpool/up8xm-neon.c",

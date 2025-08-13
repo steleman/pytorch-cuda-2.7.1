@@ -13,9 +13,9 @@ C10_DEFINE_int(sampled_iter, 10e6,
     "Number of iterations for the sampled observer benchmark");
 
 namespace {
-const int kTensorSize = 16;
-const int kSmallTensorSize = 1;
-const float kLowSamplingProb = 0.0001;
+  const int kTensorSize = 16;
+  const int kSmallTensorSize = 1;
+  const float kLowSamplingProb = 0.0001;
 }
 
 void addTestCallback(
