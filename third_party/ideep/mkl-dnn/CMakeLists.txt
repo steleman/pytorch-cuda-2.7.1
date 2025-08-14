@@ -14,7 +14,7 @@
 # limitations under the License.
 #===============================================================================
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.20)
 
 # CMake minimum required version enables all policies introduced in minimum
 # version and earlier versions. Policies introduced in future versions

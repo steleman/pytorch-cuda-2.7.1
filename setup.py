@@ -289,10 +289,6 @@ if BUILD_LIBTORCH_WHL:
     os.environ["BUILD_FUNCTORCH"] = "OFF"
 
 
-if BUILD_PYTHON_ONLY:
-    os.environ["BUILD_LIBTORCHLESS"] = "ON"
-    os.environ["LIBTORCH_LIB_PATH"] = f"{_get_package_path('torch')}/lib"
-
 ################################################################################
 # Parameters parsed from environment
 ################################################################################
@@ -368,16 +364,19 @@ cmake_python_include_dir = sysconfig.get_path("include")
 
 package_name = os.getenv("TORCH_PACKAGE_NAME", "torch")
 LIBTORCH_PKG_NAME = os.getenv("LIBTORCH_PACKAGE_NAME", "torch_no_python")
+
 if BUILD_LIBTORCH_WHL:
     package_name = LIBTORCH_PKG_NAME
 
 
 package_type = os.getenv("PACKAGE_TYPE", "wheel")
-version = get_torch_version()
+version = os.getenv("TORCH_PACKAGE_VERSION", get_torch_version())
 report(f"Building wheel {package_name}-{version}")
+report(f"Package Name: {package_name}")
+package_version = os.getenv("TORCH_PACKAGE_VERSION", get_torch_version())
+report(f"Package Version: {package_version}")
 
 cmake = CMake()
-
 
 def get_submodule_folders():
     git_modules_path = os.path.join(cwd, ".gitmodules")
@@ -710,9 +709,7 @@ class build_ext(setuptools.command.build_ext.build_ext):
         # Do not use clang to compile extensions if `-fstack-clash-protection` is defined
         # in system CFLAGS
         c_flags = str(os.getenv("CFLAGS", ""))
-        if (
-            IS_LINUX
-            and "-fstack-clash-protection" in c_flags
+        if (IS_LINUX and "-fstack-clash-protection" in c_flags
             and "clang" in os.environ.get("CC", "")
         ):
             os.environ["CC"] = str(os.environ["CC"])

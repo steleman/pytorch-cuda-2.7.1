@@ -275,7 +275,8 @@ void run_check(float tolerance) {
   report_pass_rate(passed, FLAGS_iter);
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
       "Run accuracy comparison to a reference model for a pytorch model.\n"
       "Example usage:\n"
@@ -283,8 +284,16 @@ int main(int argc, char** argv) {
       " --refmodel=<ref_model_file>"
       " --model=<model_file>"
       " --iter=20");
+
+  if (argc < 4) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cerr << "Failed to parse command line flags!" << std::endl;
+    std::cerr << "Failed to parse command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

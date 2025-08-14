@@ -91,9 +91,11 @@ function(_OPENMP_FLAG_CANDIDATES LANG)
     unset(OpenMP_FLAG_CANDIDATES)
 
     set(OMP_FLAG_GNU "-fopenmp")
-    if(CMAKE_${LANG}_COMPILER_ID STREQUAL "Clang" AND CMAKE_${LANG}_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    if (CMAKE_${LANG}_COMPILER_ID STREQUAL "Clang" AND CMAKE_${LANG}_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
       # clang-cl specific flags
       set(OMP_FLAG_Clang "-Xclang -fopenmp=libomp" "-Xclang -fopenmp=libiomp5" "-Xclang -fopenmp")
+    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      set(OMP_FLAG_GNU "-fopenmp")
     else()
       # regular clang flags
       set(OMP_FLAG_Clang "-fopenmp=libomp" "-fopenmp=libiomp5" "-fopenmp")
@@ -133,6 +135,10 @@ function(_OPENMP_FLAG_CANDIDATES LANG)
     set(OMP_FLAG_Flang "-fopenmp")
     set(OMP_FLAG_SunPro "-xopenmp")
     set(OMP_FLAG_XL "-qsmp=omp")
+    set(OMP_FLAG_GNU "-fopenmp")
+    set(OMP_FLAG_C_GNU "-fopenmp")
+    set(OMP_FLAG_CXX_GNU "-fopenmp")
+    set(OMP_FLAG_Fortran_GNU "-fopenmp")
     # Cray compiler activate OpenMP with -h omp, which is enabled by default.
     set(OMP_FLAG_Cray " " "-h omp")
 
@@ -278,12 +284,19 @@ function(_OPENMP_GET_FLAGS LANG FLAG_MODE OPENMP_FLAG_VAR OPENMP_LIB_NAMES_VAR)
     endif()
 
     if (NOT OpenMP_libomp_LIBRARY)
-      find_library(OpenMP_libomp_LIBRARY
-        NAMES omp gomp iomp5
-        HINTS ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
-        DOC "libomp location for OpenMP"
-      )
-      mark_as_advanced(OpenMP_libomp_LIBRARY)
+      if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+        find_library(OpenMP_libomp_LIBRARY
+                     NAMES omp iomp5
+                     HINTS ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
+                     DOC "libomp location for Clang OpenMP")
+        mark_as_advanced(OpenMP_libomp_LIBRARY)
+      elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        find_library(OpenMP_libomp_LIBRARY
+                     NAMES omp iomp5
+                     HINTS ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
+                     DOC "libomp location for GNU OpenMP")
+        mark_as_advanced(OpenMP_libomp_LIBRARY)
+      endif()
     endif()
 
     # Use OpenMP_PREFIX if defined
@@ -304,7 +317,7 @@ function(_OPENMP_GET_FLAGS LANG FLAG_MODE OPENMP_FLAG_VAR OPENMP_LIB_NAMES_VAR)
       endif()
     endif()
 
-    if(OpenMP_libomp_LIBRARY)
+    if (OpenMP_libomp_LIBRARY)
       message(STATUS "Check OMP with lib ${OpenMP_libomp_LIBRARY} and flags ${OPENMP_FLAGS_TEST}")
       try_compile( OpenMP_COMPILE_RESULT_${FLAG_MODE}_${OPENMP_PLAIN_FLAG} ${CMAKE_BINARY_DIR} ${_OPENMP_TEST_SRC}
         CMAKE_FLAGS "-DCOMPILE_DEFINITIONS:STRING=${OPENMP_FLAGS_TEST}"
@@ -315,6 +328,8 @@ function(_OPENMP_GET_FLAGS LANG FLAG_MODE OPENMP_FLAG_VAR OPENMP_LIB_NAMES_VAR)
         set("${OPENMP_FLAG_VAR}" "${OPENMP_FLAG}" PARENT_SCOPE)
         if(OpenMP_libomp_LIBRARY MATCHES "iomp5")
           set("${OPENMP_LIB_NAMES_VAR}" "libiomp5" PARENT_SCOPE)
+        elseif (OpenMP_libomp_LIBRARY MATCHES "gomp")
+          set("${OPENMP_LIB_NAMES_VAR}" "libgomp" PARENT_SCOPE)
         else()
           set("${OPENMP_LIB_NAMES_VAR}" "libomp" PARENT_SCOPE)
         endif()

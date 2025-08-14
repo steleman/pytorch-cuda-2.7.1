@@ -82,7 +82,8 @@ c10::Dict<c10::IValue, c10::IValue> createCompileSpec() {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
       "Run NNC AOT compiler for pytorch model. Example usage:\n"
       "build/bin/aot_model_compiler"
@@ -96,9 +97,15 @@ int main(int argc, char** argv) {
       " [--output_llvm=<llvm assembly output file path>]"
       " [--output_model=<output model file path>]");
 
+  if (argc < 7) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cerr << "Failed to parse command line flags!" << std::endl;
-    std::cout << c10::UsageMessage() << std::endl;
+    std::cerr << "Failed to parse command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

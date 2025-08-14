@@ -1,8 +1,22 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(c10 CXX)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ standard whose features are requested to build this target.")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(WERROR False)
+
+if (APPLE OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  set(USE_CUDA False)
+else()
+  set(USE_CUDA True)
+endif()
+
+set(USE_ROCM False)
+set(C10_BUILD_SHARED_LIBS True)
 
 # Main build file for the C10 library.
 #
@@ -21,8 +35,12 @@ endif()
   # ---[ Configure macro file.
   set(C10_USE_GFLAGS ${USE_GFLAGS}) # used in cmake_macros.h.in
   set(C10_USE_GLOG ${USE_GLOG}) # used in cmake_macros.h.in
-  set(C10_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS}) # used in cmake_macros.h.in
-  set(C10_USE_NUMA ${USE_NUMA})
+  set(C10_BUILD_SHARED_LIBS True) # used in cmake_macros.h.in
+  if (LINUX)
+    set(C10_USE_NUMA True)
+  elseif (APPLE)
+    set(C10_USE_NUMA False)
+  endif()
   set(C10_USE_MSVC_STATIC_RUNTIME ${CAFFE2_USE_MSVC_STATIC_RUNTIME})
   set(C10_USE_ROCM_KERNEL_ASSERT ${USE_ROCM_KERNEL_ASSERT})
   configure_file(
@@ -55,12 +73,16 @@ if(NOT BUILD_LIBTORCHLESS)
     set_target_properties(c10 PROPERTIES
         VERSION ${TORCH_VERSION} SOVERSION ${TORCH_SOVERSION})
   endif()
+
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    string(REPLACE "-fcolor-diagnostics" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+    string(REPLACE "-fcolor-diagnostics" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string(APPEND CMAKE_C_FLAGS " -fno-color-diagnostics")
+    string(APPEND CMAKE_CXX_FLAGS " -fno-color-diagnostics")
+  endif()
+
   # If building shared library, set dllimport/dllexport proper.
   target_compile_options(c10 PRIVATE "-DC10_BUILD_MAIN_LIB")
-  # Enable hidden visibility if compiler supports it.
-  if(${COMPILER_SUPPORTS_HIDDEN_VISIBILITY})
-    target_compile_options(c10 PRIVATE "-fvisibility=hidden")
-  endif()
 
   option(C10_USE_IWYU "Use include-what-you-use to clean up header inclusion" OFF)
   if(C10_USE_IWYU)
@@ -79,11 +101,6 @@ if(NOT BUILD_LIBTORCHLESS)
         )
       set_property(TARGET c10 PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_cmd})
     endif()
-  endif()
-
-  if(WERROR)
-    target_compile_options_if_supported(c10 PRIVATE "-Werror=sign-compare")
-    target_compile_options_if_supported(c10 PRIVATE "-Werror=shadow")
   endif()
 
   # ---[ Dependency of c10

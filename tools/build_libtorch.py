@@ -25,7 +25,7 @@ if __name__ == "__main__":
     options = parser.parse_args()
 
     build_pytorch(
-        version=None,
+        version='2.7.1',
         cmake_python_library=None,
         build_python=False,
         rerun_cmake=options.rerun_cmake,

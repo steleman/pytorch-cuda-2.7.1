@@ -1,0 +1,11 @@
+prefix=/src/steleman/programming/libtorch/20250609/pytorch-2.7.1-python/torch
+exec_prefix=/src/steleman/programming/libtorch/20250609/pytorch-2.7.1-python/torch
+libdir=${exec_prefix}/lib64
+includedir=${prefix}/include
+
+Name: fmt
+Description: A modern formatting library
+Version: 11.1.4
+Libs: -L${libdir} -lfmt
+Cflags: -I${includedir}
+

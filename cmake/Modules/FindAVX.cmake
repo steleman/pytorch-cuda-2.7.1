@@ -1,6 +1,11 @@
-INCLUDE(CheckCSourceRuns)
-INCLUDE(CheckCSourceCompiles)
-INCLUDE(CheckCXXSourceRuns)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS ON)
+
+include(CheckCSourceCompiles)
+include(CheckCSourceRuns)
+include(CheckCXXSourceRuns)
 
 SET(AVX_CODE "
   #include <immintrin.h>
@@ -49,6 +54,7 @@ MACRO(CHECK_SSE lang type flags)
   SET(__FLAG_I 1)
   SET(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
   FOREACH(__FLAG ${flags})
+    message(STATUS "FindAVX: Checking flag ${__FLAG} - ${__FLAG_I} ...")
     IF(NOT ${lang}_${type}_FOUND)
       SET(CMAKE_REQUIRED_FLAGS ${__FLAG})
       IF(lang STREQUAL "CXX")
@@ -74,10 +80,11 @@ MACRO(CHECK_SSE lang type flags)
 
 ENDMACRO()
 
-CHECK_SSE(C "AVX" " ;-mavx;/arch:AVX")
-CHECK_SSE(C "AVX2" " ;-mavx2 -mfma -mf16c;/arch:AVX2")
-CHECK_SSE(C "AVX512" " ;-mavx512f -mavx512dq -mavx512vl -mavx512bw -mfma;/arch:AVX512")
+CHECK_SSE(C "AVX" "-mavx;/arch:AVX")
+CHECK_SSE(C "AVX2" "-mavx2 -mfma -mf16c;/arch:AVX2")
+CHECK_SSE(C "AVX512" "-mavx512f -mavx512dq -mavx512vl -mavx512bw -mfma;/arch:AVX512")
 
 CHECK_SSE(CXX "AVX" " ;-mavx;/arch:AVX")
 CHECK_SSE(CXX "AVX2" " ;-mavx2 -mfma -mf16c;/arch:AVX2")
 CHECK_SSE(CXX "AVX512" " ;-mavx512f -mavx512dq -mavx512vl -mavx512bw -mfma;/arch:AVX512")
+

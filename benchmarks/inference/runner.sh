@@ -31,12 +31,12 @@ for batch_size in "${batch_size_values[@]}"; do
     fi
     for i in $(seq 1 $num_iters); do
       if [ "$compile" = true ]; then
-        python -W ignore "$benchmark_script" --batch_size "$batch_size" --output_file "$output_file" --compile
+        python3 -W ignore "$benchmark_script" --batch_size "$batch_size" --output_file "$output_file" --compile
       else
-        python -W ignore "$benchmark_script" --batch_size "$batch_size" --output_file "$output_file" --no-compile
+        python3 -W ignore "$benchmark_script" --batch_size "$batch_size" --output_file "$output_file" --no-compile
       fi
     done
-    python process_metrics.py --csv "$output_file" --name "$experiment_name"
+    python3 process_metrics.py --csv "$output_file" --name "$experiment_name"
     rm "./results/$output_file"
   done
 done

@@ -55,7 +55,8 @@ void dump_opnames(const Module& m, std::unordered_set<std::string>& opnames) {
 C10_DEFINE_string(model, "", "The given torch script model.");
 C10_DEFINE_string(output, "", "The output yaml file of operator list.");
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   c10::SetUsageMessage(
     "Dump operators in a script module and its sub modules.\n"
     "Example usage:\n"
@@ -63,8 +64,15 @@ int main(int argc, char** argv) {
     " --model=<model_file>"
     " --output=<output.yaml>");
 
+  if (argc < 3) {
+    std::cerr << "Insufficient command-line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
+    return 1;
+  }
+
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
     std::cerr << "Failed to parse command line flags!" << std::endl;
+    std::cerr << c10::UsageMessage() << std::endl;
     return 1;
   }
 

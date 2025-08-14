@@ -387,6 +387,7 @@ if (USE_RTLD_GLOBAL_WITH_LIBTORCH or os.getenv("TORCH_USE_RTLD_GLOBAL")) and (
     # mysterious segfaults.
     #
     old_flags = sys.getdlopenflags()
+    # Do NOT set os.RTLD_NOW here. It will fail dlopen().
     sys.setdlopenflags(os.RTLD_GLOBAL | os.RTLD_LAZY)
 
     from torch._C import *  # noqa: F403

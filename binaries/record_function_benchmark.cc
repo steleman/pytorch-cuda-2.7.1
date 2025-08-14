@@ -13,9 +13,9 @@ C10_DEFINE_int(sampled_iter, 10e6,
     "Number of iterations for the sampled observer benchmark");
 
 namespace {
-const int kTensorSize = 16;
-const int kSmallTensorSize = 1;
-const float kLowSamplingProb = 0.0001;
+  const int kTensorSize = 16;
+  const int kSmallTensorSize = 1;
+  const float kLowSamplingProb = 0.0001;
 }
 
 void addTestCallback(
@@ -79,10 +79,11 @@ void runBenchmark() {
             << " us." << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[])
+{
   if (!c10::ParseCommandLineFlags(&argc, &argv)) {
-    std::cout << "Failed to parse command line flags" << std::endl;
-    return -1;
+    std::cerr << "Failed to parse command line flags" << std::endl;
+    return 1;
   }
 
   at::enableRecordFunction();

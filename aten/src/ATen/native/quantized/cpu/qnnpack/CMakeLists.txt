@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 include(GNUInstallDirs)
 
@@ -18,13 +18,18 @@ option(PYTORCH_QNNPACK_BUILD_TESTS "Build QNNPACK unit tests" ON)
 option(PYTORCH_QNNPACK_BUILD_BENCHMARKS "Build QNNPACK benchmarks" ON)
 
 # Enable runtime requantization.
-add_definitions(-DPYTORCH_QNNPACK_RUNTIME_QUANTIZATION=1)
+add_definitions("-DPYTORCH_QNNPACK_RUNTIME_QUANTIZATION=1")
+
+message(STATUS "CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "CMAKE_OSX_ARCHITECTURES: ${CMAKE_OSX_ARCHITECTURES}")
 
 # ---[ Target processor
 SET(PYTORCH_QNNPACK_TARGET_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}")
 IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_OSX_ARCHITECTURES MATCHES "^(x86_64|arm64)$")
   SET(PYTORCH_QNNPACK_TARGET_PROCESSOR "${CMAKE_OSX_ARCHITECTURES}")
 ENDIF()
+
+message(STATUS "PYTORCH_QNNPACK_TARGET_PROCESSOR: ${PYTORCH_QNNPACK_TARGET_PROCESSOR}")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # TODO: See https://github.com/pytorch/pytorch/issues/56285

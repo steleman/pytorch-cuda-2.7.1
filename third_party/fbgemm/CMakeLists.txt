@@ -8,7 +8,8 @@
 # CMake Prelude
 ################################################################################
 
-cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+cmake_policy(SET CMP0148 OLD)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
@@ -100,7 +101,11 @@ set_property(CACHE FBGEMM_LIBRARY_TYPE PROPERTY STRINGS default static shared)
 option(FBGEMM_BUILD_TESTS "Build fbgemm unit tests" ON)
 option(FBGEMM_BUILD_BENCHMARKS "Build fbgemm benchmarks" ON)
 option(FBGEMM_BUILD_DOCS "Build fbgemm documentation" OFF)
-option(FBGEMM_BUILD_FBGEMM_GPU "Build fbgemm_gpu library" OFF)
+if (LINUX)
+  option(FBGEMM_BUILD_FBGEMM_GPU "Build fbgemm_gpu library" ON)
+else()
+  option(FBGEMM_BUILD_FBGEMM_GPU "Build fbgemm_gpu library" OFF)
+endif()
 
 if(FBGEMM_BUILD_TESTS)
   enable_testing()
@@ -189,7 +194,6 @@ if(MSVC)
 else(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " -Wall")
   string(APPEND CMAKE_CXX_FLAGS " -Wextra")
-  string(APPEND CMAKE_CXX_FLAGS " -Werror")
   string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated-declarations")
   string(APPEND CMAKE_CXX_FLAGS " -Wimplicit-fallthrough")
   target_compile_options(fbgemm_avx2 PRIVATE

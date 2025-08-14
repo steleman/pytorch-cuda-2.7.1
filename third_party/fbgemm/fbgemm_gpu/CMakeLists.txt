@@ -22,6 +22,10 @@ endfunction()
 set(CMAKEMODULES ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/modules)
 set(FBGEMM ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(THIRDPARTY ${FBGEMM}/third_party)
+set(TORCH_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/torch/include)
+set(TORCH_API_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/torch/include/torch/csrc/api/include)
+set(ATEN_SRC_DIR ${CMAKE_SOURCE_DIR}/aten/src)
+set(C10_INCLUDE_DIR ${CMAKE_BINARY_DIR})
 
 
 ################################################################################
@@ -31,10 +35,22 @@ set(THIRDPARTY ${FBGEMM}/third_party)
 option(FBGEMM_CPU_ONLY  "Build FBGEMM_GPU without GPU support" OFF)
 option(USE_ROCM         "Build FBGEMM_GPU for ROCm" OFF)
 
-if(((EXISTS "/opt/rocm/") OR (EXISTS $ENV{ROCM_PATH}))
-   AND NOT (EXISTS "/bin/nvcc"))
-  message("AMD GPU detected; setting to ROCm build")
-  set(USE_ROCM ON)
+message(STATUS "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}")
+
+if (((EXISTS "/opt/rocm") OR (EXISTS $ENV{ROCM_PATH}))
+    AND (${CMAKE_CUDA_COMPILER} STREQUAL ""))
+  message(STATUS "AMD GPU detected; setting to ROCm build")
+  set(USE_ROCM ON CACHE BOOL "USE_ROCM" FORCE)
+else()
+  set(USE_ROCM OFF CACHE BOOL "USE_ROCM" FORCE)
+endif()
+
+if (NOT USE_ROCM)
+  if (NOT (EXISTS "${CMAKE_CUDA_COMPILER}"))
+    message(FATAL_ERROR "Not using ROCm and CMAKE_CUDA_COMPILER is invalid.")
+  endif()
+
+  set(USE_CUDA ON CACHE BOOL "USE_CUDA" FORCE)
 endif()
 
 if(FBGEMM_CPU_ONLY)
@@ -45,6 +61,14 @@ else()
   BLOCK_PRINT("Building the CUDA variant of FBGEMM-GPU")
 endif()
 
+if (LINUX AND USE_CUDA)
+  add_compile_options(-I${CUDA_TOOLKIT_TARGET_INCLUDE})
+  add_compile_options(-I${TORCH_API_INCLUDE_DIR})
+  add_compile_options(-I${TORCH_INCLUDE_DIR})
+  add_compile_options(-I${CMAKE_BINARY_DIR})
+  add_compile_options(-I${CMAKE_SOURCE_DIR})
+  add_compile_options(-I${ATEN_SRC_DIR})
+endif()
 
 ################################################################################
 # FBGEMM_GPU C++ Setup
@@ -63,14 +87,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-
-if(DEFINED GLIBCXX_USE_CXX11_ABI)
-  if(${GLIBCXX_USE_CXX11_ABI} EQUAL 1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-  endif()
-endif()
 
 BLOCK_PRINT(
   "Default C++ compiler flags"
@@ -110,14 +126,19 @@ include(${CMAKEMODULES}/FindAVX.cmake)
 # PyTorch Dependencies Setup
 ################################################################################
 
-find_package(Torch REQUIRED)
-
 #
 # Toch Cuda Extensions are normally compiled with the flags below. However we
 # disabled -D__CUDA_NO_HALF_CONVERSIONS__ here as it caused "error: no suitable
 # constructor exists to convert from "int" to "__half" errors in
 # gen_embedding_forward_quantized_split_[un]weighted_codegen_cuda.cu
 #
+
+add_compile_options("-I${CMAKE_SOURCE_DIR}")
+add_compile_options("-I${TORCH_API_INCLUDE_DIR}")
+add_compile_options("-I${TORCH_INCLUDE_DIR}")
+add_compile_options("-I${ATEN_SRC_DIR}")
+add_compile_options("-I${CMAKE_BINARY_DIR}")
+add_compile_options("-I${CMAKE_SOURCE_DIR}")
 
 set(TORCH_CUDA_OPTIONS
     --expt-relaxed-constexpr -D__CUDA_NO_HALF_OPERATORS__
@@ -267,7 +288,7 @@ set(gen_cpu_source_files
     "gen_embedding_forward_quantized_weighted_codegen_cpu.cpp"
     "gen_embedding_backward_dense_split_cpu.cpp")
 
-set(gen_python_source_files ${CMAKE_BINARY_DIR}/__init__.py)
+set(gen_python_source_files ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
 
 # For each of the optimizers, generate the backward split variant by adding
 # the Python, CPU-only, GPU host, and GPU kernel source files
@@ -278,7 +299,7 @@ foreach(optimizer
     ${CPU_ONLY_OPTIMIZERS}
     ${GPU_ONLY_OPTIMIZERS})
   list(APPEND gen_python_source_files
-    "${CMAKE_BINARY_DIR}/lookup_${optimizer}.py")
+    "${CMAKE_CURRENT_BINARY_DIR}/lookup_${optimizer}.py")
 endforeach()
 
 # Generate the backend API for all optimizers to preserve the backward
@@ -322,7 +343,7 @@ foreach(optimizer ${DEFUSED_OPTIMIZERS})
     "gen_embedding_optimizer_${optimizer}_split_cuda.cu"
     "gen_embedding_optimizer_${optimizer}_split_kernel.cu")
   list(APPEND gen_defused_optim_py_files
-    "${CMAKE_BINARY_DIR}/split_embedding_optimizer_${optimizer}.py")
+    "${CMAKE_CURRENT_BINARY_DIR}/split_embedding_optimizer_${optimizer}.py")
 endforeach()
 
 set(CMAKE_CODEGEN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/codegen)
@@ -388,18 +409,27 @@ set(optimizer_codegen_dependencies
     ${CMAKE_CURRENT_SOURCE_DIR}/include/fbgemm_gpu/dispatch_macros.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/fbgemm_gpu/fbgemm_cuda_utils.cuh)
 
-if(USE_ROCM)
-  message(STATUS "${PYTHON_EXECUTABLE}" "${CMAKE_CODEGEN_DIR}/embedding_backward_code_generator.py" "--opensource --is_rocm")
+if (NOT DEFINED Python3_EXECUTABLE)
+  find_package(Python3 COMPONENTS Interpreter)
+  if (NOT Python3_FOUND)
+    set(Python3_EXECUTABLE "python3")
+  endif()
+endif()
+
+message(STATUS "Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
+
+if (USE_ROCM)
+  message(STATUS "${Python3_EXECUTABLE}" "${CMAKE_CODEGEN_DIR}/embedding_backward_code_generator.py" "--opensource --is_rocm")
 
   execute_process(
     COMMAND
-      "${PYTHON_EXECUTABLE}"
+      "${Python3_EXECUTABLE}"
       "${CMAKE_CODEGEN_DIR}/embedding_backward_code_generator.py"
       "--opensource" "--is_rocm" DEPENDS "${embedding_codegen_dependencies}")
 
   execute_process(
     COMMAND
-      "${PYTHON_EXECUTABLE}"
+      "${Python3_EXECUTABLE}"
       "${CMAKE_CODEGEN_DIR}/embedding_optimizer_code_generator.py"
       "--opensource" "--is_rocm" DEPENDS "${optimizer_codegen_dependencies}")
 
@@ -417,7 +447,7 @@ else()
       ${gen_gpu_host_source_files}
       ${gen_python_source_files}
     COMMAND
-      "${PYTHON_EXECUTABLE}"
+      "${Python3_EXECUTABLE}"
       "${CMAKE_CODEGEN_DIR}/embedding_backward_code_generator.py" "--opensource"
     DEPENDS "${embedding_codegen_dependencies}")
 
@@ -426,7 +456,7 @@ else()
       ${gen_defused_optim_source_files}
       ${gen_defused_optim_py_files}
     COMMAND
-      "${PYTHON_EXECUTABLE}"
+      "${Python3_EXECUTABLE}"
       "${CMAKE_CODEGEN_DIR}/embedding_optimizer_code_generator.py"
       "--opensource"
     DEPENDS "${optimizer_codegen_dependencies}")
@@ -461,12 +491,12 @@ set_source_files_properties(${gen_cpu_source_files}
 
 set_source_files_properties(${gen_gpu_host_source_files}
   PROPERTIES INCLUDE_DIRECTORIES
-  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_SOURCE_DIR}/../include"
+  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_SOURCE_DIR}/../include;${TORCH_API_INCLUDE_DIR};${TORCH_INCLUDE_DIR};${CMAKE_BINARY_DIR};${CMAKE_SOURCE_DIR};${ATEN_SRC_DIR}"
 )
 
 set_source_files_properties(${gen_gpu_kernel_source_files}
   PROPERTIES INCLUDE_DIRECTORIES
-  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include")
+  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include;${TORCH_API_INCLUDE_DIR};${TORCH_INCLUDE_DIR};${CMAKE_BINARY_DIR};${CMAKE_SOURCE_DIR};${ATEN_SRC_DIR}")
 
 set_source_files_properties(${gen_gpu_kernel_source_files}
   PROPERTIES COMPILE_OPTIONS
@@ -474,7 +504,7 @@ set_source_files_properties(${gen_gpu_kernel_source_files}
 
 set_source_files_properties(${gen_defused_optim_source_files}
   PROPERTIES INCLUDE_DIRECTORIES
-  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_SOURCE_DIR}/../include"
+  "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/include;${CMAKE_CURRENT_SOURCE_DIR}/../include;${TORCH_API_INCLUDE_DIR};${TORCH_INCLUDE_DIR};${CMAKE_BINARY_DIR};${CMAKE_SOURCE_DIR};${ATEN_SRC_DIR}"
 )
 
 if(NOT FBGEMM_CPU_ONLY)

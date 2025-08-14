@@ -71,14 +71,6 @@ if(CAFFE2_COMPILER_SUPPORTS_AVX512_EXTENSIONS)
 endif()
 cmake_pop_check_state()
 
-# ---[ Checks if compiler supports -fvisibility=hidden
-check_cxx_compiler_flag("-fvisibility=hidden" COMPILER_SUPPORTS_HIDDEN_VISIBILITY)
-check_cxx_compiler_flag("-fvisibility-inlines-hidden" COMPILER_SUPPORTS_HIDDEN_INLINE_VISIBILITY)
-if(${COMPILER_SUPPORTS_HIDDEN_INLINE_VISIBILITY})
-  set(CAFFE2_VISIBILITY_FLAG "-fvisibility-inlines-hidden")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CAFFE2_VISIBILITY_FLAG}")
-endif()
-
 # ---[ Checks if linker supports -rdynamic. `-rdynamic` tells linker
 # -to add all (including unused) symbols into the dynamic symbol
 # -table. We need this to get symbols when generating backtrace at
@@ -101,12 +93,17 @@ endif()
 
 # ---[ Check if the compiler has SVE support.
 find_package(ARM) # checks SVE
-if(CXX_SVE_FOUND)
+
+if (CXX_SVE_FOUND)
   message(STATUS "Compiler supports SVE extension. Will build perfkernels.")
   # Also see CMakeLists.txt under caffe2/perfkernels.
   add_compile_definitions(CAFFE2_PERF_WITH_SVE=1)
 else()
-  message(STATUS "Compiler does not support SVE extension. Will not build perfkernels.")
+  if (APPLE)
+    message(STATUS "Building on MacOS ARM64. Will not build perfkernels.")
+  else()
+    message(STATUS "Compiler does not support SVE extension. Will not build perfkernels.")
+  endif()
 endif()
 
 if(IOS AND (${IOS_ARCH} MATCHES "armv7*"))

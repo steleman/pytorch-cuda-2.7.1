@@ -23,6 +23,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <memory>
 
 #include <gloo/allgather.h>
 #include <gloo/allgatherv.h>

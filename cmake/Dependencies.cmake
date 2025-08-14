@@ -1,16 +1,33 @@
 # RPATH stuff
 # see https://cmake.org/Wiki/CMake_RPATH_handling
-if(APPLE)
+if (APPLE)
   set(CMAKE_MACOSX_RPATH ON)
   set(_rpath_portable_origin "@loader_path")
+  set(USE_CUDA OFF)
+  set(USE_CUDNN OFF)
+  set(USE_CUSPARSELT OFF)
+  set(USE_CUFILE OFF)
+  set(USE_NVRTC OFF)
 else()
   set(_rpath_portable_origin $ORIGIN)
 endif(APPLE)
+
 # Use separate rpaths during build and install phases
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
 # Don't use the install-rpath during the build phase
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "${_rpath_portable_origin}")
+if (NOT LINUX AND NOT APPLE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+else()
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif()
+
+if (CMAKE_INSTALL_RPATH)
+  list(APPEND CMAKE_INSTALL_RPATH "${_rpath_portable_origin}")
+else()
+  set(CMAKE_INSTALL_RPATH "${_rpath_portable_origin}")
+endif()
+
 # Automatically add all linked folders that are NOT in the build directory to
 # the rpath (per library?)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -34,7 +51,7 @@ macro(enable_ubsan)
 endmacro()
 
 # ---[ CUDA
-if(USE_CUDA)
+if (USE_CUDA)
   # public/*.cmake uses CAFFE2_USE_*
   set(CAFFE2_USE_CUDA ${USE_CUDA})
   set(CAFFE2_USE_CUDNN ${USE_CUDNN})
@@ -556,14 +573,19 @@ if(USE_XNNPACK AND NOT USE_SYSTEM_XNNPACK)
 
   include_directories(SYSTEM ${XNNPACK_INCLUDE_DIR})
   list(APPEND Caffe2_DEPENDENCY_LIBS XNNPACK microkernels-prod)
-elseif(NOT TARGET XNNPACK AND USE_SYSTEM_XNNPACK)
+elseif (NOT TARGET XNNPACK AND USE_SYSTEM_XNNPACK)
+  message(STATUS "Using System XNNPACK. Searching for XNNPACK.")
   add_library(XNNPACK SHARED IMPORTED)
   add_library(microkernels-prod SHARED IMPORTED)
   find_library(XNNPACK_LIBRARY XNNPACK)
   find_library(microkernels-prod_LIBRARY microkernels-prod)
+
+  message(STATUS "XNNPACK_LIBRARY: ${XNNPACK_LIBRARY}")
+  message(STATUS "microkernels-prod_LIBRARY: ${microkernels-prod_LIBRARY}")
+
   set_property(TARGET XNNPACK PROPERTY IMPORTED_LOCATION "${XNNPACK_LIBRARY}")
   set_property(TARGET microkernels-prod PROPERTY IMPORTED_LOCATION "${microkernels-prod_LIBRARY}")
-  if(NOT XNNPACK_LIBRARY or NOT microkernels-prod_LIBRARY)
+  if (NOT XNNPACK_LIBRARY OR NOT microkernels-prod_LIBRARY)
     message(FATAL_ERROR "Cannot find XNNPACK")
   endif()
   message("-- Found XNNPACK: ${XNNPACK_LIBRARY}")
@@ -701,6 +723,8 @@ if(BUILD_TEST OR BUILD_MOBILE_BENCHMARK OR BUILD_MOBILE_TEST)
   endif()
 endif()
 
+message(STATUS "CAFFE2_COMPILER_SUPPORTS_AVX512_EXTENSIONS: ${CAFFE2_COMPILER_SUPPORTS_AVX512_EXTENSIONS}")
+
 # ---[ FBGEMM
 if(USE_FBGEMM)
   set(CAFFE2_THIRD_PARTY_ROOT "${PROJECT_SOURCE_DIR}/third_party")
@@ -763,7 +787,7 @@ else()
 endif()
 
 if(USE_OPENCL)
-  message(INFO "USING OPENCL")
+  message(STATUS "USING OPENCL")
   find_package(OpenCL REQUIRED)
   include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
   list(APPEND Caffe2_DEPENDENCY_LIBS ${OpenCL_LIBRARIES})
@@ -1393,18 +1417,22 @@ if(NOT INTERN_BUILD_MOBILE)
     endif()
   endif()
 
-  string(APPEND CMAKE_CUDA_FLAGS " -Wno-deprecated-gpu-targets --expt-extended-lambda")
+  # CUDA does not exist on iOS or MacOS
+  if (NOT IOS AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    message(STATUS "Adding CMAKE_CUDA_FLAGS")
+    string(APPEND CMAKE_CUDA_FLAGS " -Wno-deprecated-gpu-targets --expt-extended-lambda")
 
-  # use cub in a safe manner, see:
-  # https://github.com/pytorch/pytorch/pull/55292
-  string(APPEND CMAKE_CUDA_FLAGS " -DCUB_WRAPPED_NAMESPACE=at_cuda_detail")
+    # use cub in a safe manner, see:
+    # https://github.com/pytorch/pytorch/pull/55292
+    string(APPEND CMAKE_CUDA_FLAGS " -DCUB_WRAPPED_NAMESPACE=at_cuda_detail")
 
-  message(STATUS "Found CUDA with FP16 support, compiling with torch.cuda.HalfTensor")
-  string(APPEND CMAKE_CUDA_FLAGS " -DCUDA_HAS_FP16=1"
-                                 " -D__CUDA_NO_HALF_OPERATORS__"
-                                 " -D__CUDA_NO_HALF_CONVERSIONS__"
-                                 " -D__CUDA_NO_HALF2_OPERATORS__"
-                                 " -D__CUDA_NO_BFLOAT16_CONVERSIONS__")
+    message(STATUS "Found CUDA with FP16 support, compiling with torch.cuda.HalfTensor")
+    string(APPEND CMAKE_CUDA_FLAGS " -DCUDA_HAS_FP16=1"
+           " -D__CUDA_NO_HALF_OPERATORS__"
+           " -D__CUDA_NO_HALF_CONVERSIONS__"
+           " -D__CUDA_NO_HALF2_OPERATORS__"
+           " -D__CUDA_NO_BFLOAT16_CONVERSIONS__")
+  endif()
 
   string(APPEND CMAKE_C_FLAGS_RELEASE " -DNDEBUG")
   string(APPEND CMAKE_CXX_FLAGS_RELEASE " -DNDEBUG")

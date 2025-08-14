@@ -101,7 +101,6 @@ set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
-# add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 add_compile_definitions(NV_UNIX=1 NV_LINUX=1 _UNIX=1)
 add_compile_definitions(DRIVER_MAJOR_VERSION="418")
 add_compile_definitions(DRIVER_VERSION="418")

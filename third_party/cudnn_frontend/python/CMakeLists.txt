@@ -72,8 +72,6 @@ if(MSVC)
     target_compile_options(_compiled_module PRIVATE /wd4458)
     target_compile_options(_compiled_module PRIVATE /wd4505)
     target_compile_options(_compiled_module PRIVATE /bigobj)
-else()
-    add_compile_options(-fvisibility=hidden)
 endif()
 
 set_target_properties(

@@ -1,0 +1,12 @@
+prefix=/Volumes/CT4000P34TB/src/steleman/programming/libtorch/20250609/pytorch-2.7.1/torch
+exec_prefix=/Volumes/CT4000P34TB/src/steleman/programming/libtorch/20250609/pytorch-2.7.1/torch
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libTorch
+Description: Library to detect essential performance optimization information about host CPU.
+Version: 
+URL: 
+Libs: -L${libdir} -lcpuinfo
+Cflags: -I${includedir}
+

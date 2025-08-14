@@ -148,10 +148,6 @@ if(NOT MSVC)
   # clang outputs some warnings for unknown flags that are not caught by check_cxx_compiler_flag
   # adding -Werror turns such warnings into errors
   check_cxx_compiler_flag("-Werror" COMPILER_SUPPORT_WERROR)
-  if(COMPILER_SUPPORT_WERROR)
-    set(CMAKE_REQUIRED_FLAGS "-Werror")
-  endif()
-  ei_add_cxx_compiler_flag("-pedantic")
   ei_add_cxx_compiler_flag("-Wall")
   ei_add_cxx_compiler_flag("-Wextra")
   #ei_add_cxx_compiler_flag("-Weverything")              # clang

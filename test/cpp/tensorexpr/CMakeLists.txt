@@ -50,9 +50,14 @@ target_include_directories(tutorial_tensorexpr PRIVATE ${ATen_CPU_INCLUDE})
 # The test case depends on the xnnpack header which in turn depends on the
 # pthreadpool header. For some build environment we need add the dependency
 # explicitly.
-if(USE_PTHREADPOOL)
-  target_link_libraries(test_tensorexpr PRIVATE pthreadpool_interface)
+if (USE_PTHREADPOOL)
+  if (USE_SYSTEM_PTHREADPOOL)
+    target_link_libraries(test_tensorexpr PRIVATE pthreadpool)
+  else()
+    target_link_libraries(test_tensorexpr PRIVATE pthreadpool_interface)
+  endif()
 endif()
+
 if(USE_CUDA)
   target_compile_definitions(test_tensorexpr PRIVATE USE_CUDA)
   target_compile_definitions(tutorial_tensorexpr PRIVATE USE_CUDA)

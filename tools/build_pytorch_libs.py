@@ -119,8 +119,12 @@ def build_pytorch(
     cmake: CMake,
 ) -> None:
     my_env = _create_build_env()
-    checkout_nccl()
     build_test = not check_negative_env_flag("BUILD_TEST")
+    print("----------------------------------------")
+    for k, v in my_env.items():
+		    print(f"{k}: {v}")
+    print("----------------------------------------")
+
     cmake.generate(
         version, cmake_python_library, build_python, build_test, my_env, rerun_cmake
     )

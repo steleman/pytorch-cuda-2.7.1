@@ -2,6 +2,8 @@ if(NOT APPLE)
     return()
 endif()
 
+cmake_policy(SET CMP0153 OLD)
+
 set(METAL_CFLAGS -Wall -Wextra -fno-fast-math)
 if(WERROR)
     string(APPEND METAL_CFLAGS -Werror)

@@ -1,0 +1,91 @@
+1. Building the C / C++ libtorch:
+
+  - Install Torch dependencies from Homebrew:
+
+      - Python 3.13. Apple's Python 3.9 is much too old to be usable.
+      - protobuf
+      - bbseil
+      - eigen
+      - cmake
+      - make (GNU make)
+      - GNU Utilities: coreutils, diffutils, findutils, grep, awk, gettext
+      - gnu-sed, gnu-tar, gzip, xz
+      - gnutls
+      - libssh2
+      - fftw
+      - open-mpi
+      - slurm
+      - sleef
+      - libomp
+      - pybind11
+      - utf8cpp
+      - utf8proc
+      - z3
+      - libffi
+      - gmp
+      - mpdecimal
+      - mpfr
+      - mpdecimal
+      - libmpc
+      - openssl@3
+      - lapack
+
+  - You should install my OpenBLAS-0.3.30 package available here. OpenBLAS from
+    Homebrew is incorrectly configured and CMake can't find it. My OpenBLAS pkg
+    installs in /usr/local.
+
+  - Create a build directory parallel to the github cloned directory.
+  - Copy the 'run-cmake-configure-macos.sh' script into this build directory.
+  - Run the script 'run-cmake-configure-macos.sh'.
+  - Copy one of the 'build-pytorch-j2-macos.sh' or 'build-pytorch-j4-macos.sh'
+    build scripts into this build directory.
+  - Run one of the build scripts. -j2 or -j4 in the script name means the number
+    of parallel jobs.
+
+  - To install the resulting build, run the script 'install-pytorch-macos.sh'.
+
+
+2. Building the Python Wheels:
+
+  This build configuration of PyTorch enables Metal / MPS Acceleration on MacOS.
+  That's very nice, because any kind of speedup we might have obtained from MPS
+  or Metal is instantly cancelled by Python's general-purpose slow bloat.
+
+  Unfortunately, building the Python Wheels  has to be done from within the
+  github cloned source tree:
+
+  - Copy the scripts 'build-python-wheel-libtorch-whl-macos.sh' and
+    'build-python-wheel-python-only-whl-macos.sh' to the top of the cloned source
+    tree.
+  - Run the 'build-python-wheel-libtorch-whl-macos.sh' first. This will build the
+    Python wheel for the C and C++ objects for the Python Pytorch, and a minimal
+    set of PyTorch Python scripts.
+  - Run the script 'cleanup-python-build.sh'.
+  - Run the script 'build-python-wheel-python-only-whl-macos.sh'. This will build
+    the proper PyTorch Python Wheel. This wheel depends on the Libtorch wheel to
+    function properly.
+  - You will end up with two Python Wheels:
+
+      - libtorch_python_2_7_1_700_macos_24_5_0_arm64-2.7.1.700-py3-none-any.whl
+      - torch_python_2_7_1_700_macos_24_5_0_arm64-2.7.1.700-cp313-cp313-macosx_15_0_arm64.whl
+
+  - Install the 'libtorch_python_2_7_1_700_macos_24_5_0_arm64-2.7.1.700-py3-none-any.whl'
+    first, and then the 'torch_python_2_7_1_700_macos_24_5_0_arm64-2.7.1.700-cp313-cp313-macosx_15_0_arm64.whl' one.
+
+  - I am in no way responsible for the mind-boggling idiotic mess that is Python
+    in general and Python Wheel packaging and installation in particular.
+    Ask a Pythonista, they'll find this entirely acceptable. They are also convinced
+    that packaging software is an attribute of the programming language, not a
+    facility of the operating system you're using.
+
+    Imagine if C, C++, Objective-C, etc, all came with their own packaging system.
+    On second thought, maybe it's better if you don't imagine it.
+
+    Especially on MacOS, Python still can't figure out where exactly to install
+    its own Wheels. I am sure that, if you ask a Pythonista, they'll have some
+    helpful explanation involving "don't use Wheels, use <bla> instead". To be
+    followed by a pointless and endless debate on some mailing list about Python
+    packaging.
+
+    Truth be told, a python doesn't really need wheels.
+

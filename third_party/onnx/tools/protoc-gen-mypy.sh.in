@@ -1,4 +1,23 @@
-#!/usr/bin/env bash
+#!//bin/bash
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-# use PYTHON_EXECUTABLE from CMake to get the right python to execute
-"@PYTHON_EXECUTABLE@" -u "$DIR"/protoc-gen-mypy.py
+onnx_top="`dirname ${DIR}`"
+onnx_dir="${ONNX_TOP}/onnx"
+
+python3 -u "$DIR"/protoc-gen-mypy.py
+
+for file in \
+  onnx-data_onnx_torch.pb.h \
+  onnx-data.pb.h \
+  onnx-ml.pb.h \
+  onnx_onnx_torch-ml.pb.h \
+  onnx-operators-ml.pb.h \
+  onnx-operators_onnx_torch-ml.pb.h
+do
+  if [ -e ${onnx_dir}/${file} ] ; then
+    cp -fp "${onnx_dir}/${file}" "${onnx_dir}/${file}.orig"
+    sed -i 's#ONNX_API ##g' "${onnx_dir}/${file}"
+    touch -r "${onnx_dir}/${file}.orig" -acm "${onnx_dir}/${file}"
+  fi
+done
+
