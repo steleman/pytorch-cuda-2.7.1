@@ -7,7 +7,7 @@ The `main` branch in this repo contains the unmodified upstream PyTorch version 
 
 The `v2.7.1-macos-15.5-sequoia-arm64` branch in this repo is my fork that has been verified to work on MacOS Sequoia 15.5 with Apple Metal 3.1 and Python 3.13.
 
-The original PyTorch [README.md](https://github.com/steleman/pytorch-cuda-2.7.1/blob/v2.7.1-cuda-12.9-fc41/README.md) file has been renamed to  [PYTORCH.README.md]((https://github.com/steleman/pytorch-cuda-2.7.1/blob/v2.7.1-cuda-12.9-fc41/PYTORCH.README.md).
+The original PyTorch [README.md](https://github.com/steleman/pytorch-cuda-2.7.1/blob/v2.7.1-cuda-12.9-fc41/PYTORCH.README.md) file has been renamed to  [PYTORCH.README.md]((https://github.com/steleman/pytorch-cuda-2.7.1/blob/v2.7.1-cuda-12.9-fc41/PYTORCH.README.md).
 
 Build scripts and build instructions are in the toplevel `build_scripts` directory. Please read the file named `HOWTO.BUILD.README.txt` containing instructions on how to use the build scripts.
 
