@@ -137,7 +137,9 @@ if(ON)
   endif()
 
   if(1)
-    find_library(C10_CUDA_LIBRARY c10_cuda PATHS "${TORCH_INSTALL_PREFIX}/lib")
+    find_library(C10_CUDA_LIBRARY c10_cuda PATHS
+                 "${TORCH_INSTALL_PREFIX}/lib64"
+                 "${TORCH_INSTALL_PREFIX}/lib")
     list(APPEND TORCH_CUDA_LIBRARIES ${C10_CUDA_LIBRARY} ${Caffe2_PUBLIC_CUDA_DEPENDENCY_LIBS})
   endif()
   list(APPEND TORCH_LIBRARIES ${TORCH_CUDA_LIBRARIES})
@@ -147,12 +149,9 @@ if(0 AND 1)
     append_torchlib_if_found(c10_xpu torch_xpu)
 endif()
 
-# When we build libtorch with the old libstdc++ ABI, dependent libraries must too.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(TORCH_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=")
-endif()
-
-find_library(TORCH_LIBRARY torch PATHS "${TORCH_INSTALL_PREFIX}/lib")
+find_library(TORCH_LIBRARY torch PATHS
+             "${TORCH_INSTALL_PREFIX}/lib64"
+             "${TORCH_INSTALL_PREFIX}/lib")
 # the statements below changes target properties on
 # - the imported target from Caffe2Targets.cmake in shared library mode (see the find_package above)
 #    - this is untested whether it is the correct (or desired) methodology in CMake
